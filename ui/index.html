@@ -7,6 +7,24 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
+  <!-- 背景：透视网格地面 + 华为多设备线框（平板 / 笔记本 / 手机），纯装饰 -->
+  <div class="bg-scene" aria-hidden="true">
+    <div class="bg-floor"></div>
+    <svg class="bg-devices" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMax slice" fill="none">
+      <rect x="150" y="560" width="220" height="300" rx="20" />
+      <rect x="166" y="576" width="188" height="268" rx="8" />
+      <rect x="470" y="420" width="500" height="340" rx="18" />
+      <rect x="490" y="440" width="460" height="296" rx="6" />
+      <path d="M420 760 H1020 L1068 800 Q1072 810 1060 810 H380 Q368 810 372 800 Z" />
+      <rect x="1110" y="600" width="120" height="240" rx="20" />
+      <rect x="1120" y="614" width="100" height="212" rx="10" />
+      <path class="bg-link" d="M260 560 C 300 430, 400 400, 470 470" pathLength="1" />
+      <path class="bg-run" d="M260 560 C 300 430, 400 400, 470 470" pathLength="1" />
+      <path class="bg-link" d="M970 470 C 1060 400, 1150 470, 1170 600" pathLength="1" />
+      <path class="bg-run r2" d="M970 470 C 1060 400, 1150 470, 1170 600" pathLength="1" />
+    </svg>
+  </div>
+
   <header class="topbar">
     <div class="brand">
       <div class="logo" aria-hidden="true">
@@ -14,7 +32,7 @@
       </div>
       <div>
         <h1>PC 营销内容智能体</h1>
-        <p>场景理解 · 知识库检索 · 图文生成 · 事实与合规核验</p>
+        <p>场景理解 · ima 知识库检索 · 图文生成 · 事实与合规核验</p>
       </div>
     </div>
     <div class="topbar-right">
@@ -100,16 +118,77 @@
           <span class="status-badge" id="statusBadge" hidden></span>
         </div>
         <ol class="pipeline" id="pipeline"></ol>
+        <div class="term" id="termBox" hidden>
+          <div class="term-head"><i></i><i></i><i></i><span>请求状态</span><em id="termMode">等待响应</em></div>
+          <div class="term-body" id="termLog" role="log" aria-live="polite"></div>
+        </div>
       </div>
 
-      <!-- 空状态 -->
-      <div class="panel empty-state" id="emptyState">
-        <div class="empty-art" aria-hidden="true">
-          <div class="ring r1"></div><div class="ring r2"></div><div class="ring r3"></div>
-          <div class="core">AI</div>
+      <!-- 空状态：华为多设备线框渲染（平板 · 笔记本 · 手机，演示线框，非官方产品图） -->
+      <div class="panel empty-state hero" id="emptyState">
+        <div class="hero-stage" aria-hidden="true">
+          <svg class="hero-art" viewBox="0 0 560 300" fill="none">
+            <defs>
+              <linearGradient id="scanG" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="var(--accent)" stop-opacity="0" />
+                <stop offset="1" stop-color="var(--accent)" stop-opacity=".22" />
+              </linearGradient>
+              <radialGradient id="shadowG"><stop offset="0" stop-color="#000" stop-opacity=".45" /><stop offset="1" stop-color="#000" stop-opacity="0" /></radialGradient>
+              <clipPath id="dispClip"><rect x="160" y="40" width="240" height="150" rx="3" /></clipPath>
+            </defs>
+            <ellipse cx="280" cy="246" rx="230" ry="10" fill="url(#shadowG)" class="hero-shadow" />
+            <!-- 多屏协同连线：静态虚线 + 移动的光段 -->
+            <path class="link" d="M75 120 C 90 52, 138 46, 156 64" pathLength="1" />
+            <path class="link-run" d="M75 120 C 90 52, 138 46, 156 64" pathLength="1" />
+            <path class="link" d="M404 64 C 456 46, 504 84, 509 140" pathLength="1" />
+            <path class="link-run d2" d="M404 64 C 456 46, 504 84, 509 140" pathLength="1" />
+            <!-- 平板 -->
+            <g class="dev d-tab">
+              <rect class="draw" x="20" y="120" width="110" height="150" rx="10" pathLength="1" />
+              <rect class="draw thin" x="28" y="128" width="94" height="134" rx="4" pathLength="1" />
+              <rect class="ui" x="36" y="138" width="50" height="5" rx="2" />
+              <rect class="ui" x="36" y="150" width="78" height="40" rx="3" />
+              <rect class="ui" x="36" y="198" width="70" height="4" rx="2" />
+              <rect class="ui" x="36" y="208" width="56" height="4" rx="2" />
+            </g>
+            <!-- MateBook 笔记本 -->
+            <g class="dev d-lap">
+              <rect class="draw" x="150" y="30" width="260" height="176" rx="10" pathLength="1" />
+              <rect class="draw thin" x="160" y="40" width="240" height="150" rx="3" pathLength="1" />
+              <circle cx="280" cy="35" r="1.6" class="cam" />
+              <path class="draw" d="M120 206 H440 L466 228 Q468 234 462 234 H98 Q92 234 94 228 Z" pathLength="1" />
+              <path class="draw thin" d="M250 206 v2 a3 3 0 0 0 3 3 h54 a3 3 0 0 0 3 -3 v-2" pathLength="1" />
+              <g clip-path="url(#dispClip)">
+                <rect class="ui" x="168" y="48" width="224" height="9" rx="2" />
+                <rect class="ui img" x="168" y="66" width="100" height="72" rx="3" />
+                <rect class="ui" x="278" y="68" width="110" height="6" rx="2" />
+                <rect class="ui" x="278" y="80" width="88" height="6" rx="2" />
+                <rect class="ui" x="278" y="92" width="102" height="6" rx="2" />
+                <rect class="ui" x="278" y="104" width="64" height="6" rx="2" />
+                <rect class="ui bar b1" x="278" y="122" width="96" height="4" rx="2" />
+                <rect class="ui bar b2" x="278" y="130" width="60" height="4" rx="2" />
+                <circle class="ok" cx="172" cy="156" r="3" /><rect class="ui" x="180" y="154" width="80" height="4" rx="2" />
+                <circle class="ok o2" cx="172" cy="170" r="3" /><rect class="ui" x="180" y="168" width="64" height="4" rx="2" />
+                <rect class="scan" x="160" y="16" width="240" height="24" fill="url(#scanG)" />
+              </g>
+            </g>
+            <!-- 手机 -->
+            <g class="dev d-ph">
+              <rect class="draw" x="478" y="140" width="62" height="124" rx="10" pathLength="1" />
+              <rect class="draw thin" x="483" y="147" width="52" height="110" rx="5" pathLength="1" />
+              <rect class="ui" x="489" y="156" width="40" height="40" rx="3" />
+              <rect class="ui" x="489" y="204" width="34" height="4" rx="2" />
+              <rect class="ui" x="489" y="214" width="26" height="4" rx="2" />
+            </g>
+          </svg>
+          <span class="hero-tag t1">知识库证据检索</span>
+          <span class="hero-tag t2">产品型号核对</span>
+          <span class="hero-tag t3">营销风险检查</span>
+          <span class="hero-tag t4">文案与配图方案</span>
         </div>
         <h3>填写任务，开始生成</h3>
         <p>事实附带知识库来源；未确认图片会标记为待确认，信息不足时先追问。</p>
+        <small class="hero-note">线框为演示示意，非官方产品渲染图</small>
       </div>
 
       <!-- 状态提示 -->
@@ -130,6 +209,11 @@
           <div class="panel-head"><span class="step-num">二</span><h2>知识库依据</h2><span class="count" id="evCount"></span></div>
           <ul class="facts" id="factList"></ul>
           <div class="media-strip" id="mediaStrip"></div>
+        </article>
+
+        <article class="panel card card-wide" id="cardBench" hidden>
+          <div class="panel-head"><span class="step-num">◷</span><h2>检索与执行性能</h2><span class="count" id="benchTag"></span></div>
+          <div class="bench" id="benchBody"></div>
         </article>
 
         <article class="panel card card-wide" id="cardContent">

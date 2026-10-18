@@ -214,7 +214,36 @@
     }).join("");
   }
 
+  // 此面板只报告请求状态，不把等待动画当成真实阶段日志。
+  function renderTerminal(result) {
+    $("termBox").hidden = false;
+    $("termMode").textContent = result ? STATUS_TEXT[result.status] : "等待响应";
+    const lines = result
+      ? [result.status_message || STATUS_TEXT[result.status],
+         result.knowledge_source && result.knowledge_source.message].filter(Boolean)
+      : ["任务已提交，等待后端返回。", "完成后可查看知识来源、证据与核验结果。"];
+    $("termLog").innerHTML = lines.map((line) => `<div class="term-line">${esc(line)}</div>`).join("");
+  }
+
+  // 仅展示后端实际提供的阶段计时；没有记录则隐藏。
+  function renderBench(result) {
+    const steps = Array.isArray(result.trace) ? result.trace.filter((step) =>
+      step && typeof step.step === "string" && Number.isFinite(step.ms) && step.ms >= 0) : [];
+    $("cardBench").hidden = !steps.length;
+    $("benchBody").innerHTML = "";
+    if (!steps.length) return;
+    $("benchTag").textContent = "后端返回的阶段耗时";
+    const max = Math.max(1, ...steps.map((step) => step.ms));
+    const names = Object.fromEntries(STEPS.map(([key, name]) => [key, name]));
+    $("benchBody").innerHTML = steps.map((step) => `<div class="bench-row">
+      <span class="bench-k">${esc(names[step.step] || step.step)}</span>
+      <div class="bench-track"><div class="bench-fill" style="width:${step.ms / max * 100}%"></div></div>
+      <span class="bench-v">${Math.round(step.ms)} ms</span></div>`).join("");
+  }
+
   function animatePipeline() {
+    renderTerminal(null);
+    $("cardBench").hidden = true;
     let i = 0, stopped = false;
     const tick = () => {
       if (stopped) return;
@@ -240,6 +269,8 @@
     renderEvidence(r.evidence);
     renderContent(r);
     renderChecks(r.checks);
+    renderTerminal(r);
+    renderBench(r);
     $("cardContent").scrollIntoView({ behavior: "smooth", block: "nearest" });
   }
 
