@@ -1,0 +1,43 @@
+# 依赖与构建产物
+node_modules/
+dist/
+build/
+
+# Python、测试缓存与虚拟环境
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+venv/
+
+# 环境变量与密钥；示例配置允许提交
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.token
+*.secret
+*.secrets
+secrets.*
+credentials.*
+*_secrets.*
+*_credentials.*
+
+# 只读知识库与检索缓存
+/任德耀新建华为PC知识库/
+local-knowledge-base/
+knowledge-cache/
+*.knowledge-cache.json
+
+# 系统元数据与编辑历史
+**/__MACOSX__/
+**/__MACOSX/
+.DS_Store
+**/._*
+**/.history/
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/

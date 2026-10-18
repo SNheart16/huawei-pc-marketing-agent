@@ -1,0 +1,30 @@
+.env
+__pycache__/
+**/__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+venv/
+
+# Secret-bearing temporary or local credential files
+*.key
+*.pem
+*.token
+*.secret
+*.secrets
+secrets.*
+credentials.*
+*_secrets.*
+*_credentials.*
+
+# Extracted archives and editor history
+**/__MACOSX__/
+**/__MACOSX/
+**/.DS_Store
+**/._*
+**/.history/
+
+# Local knowledge sources and derived caches must stay outside version control
+local-knowledge-base/
+knowledge-cache/
+*.knowledge-cache.json

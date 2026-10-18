@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>华为 PC 营销内容智能体</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo" aria-hidden="true">
+        <svg viewBox="0 0 32 32"><rect x="0.5" y="0.5" width="31" height="31" rx="8" fill="none" stroke="currentColor" stroke-opacity=".18"/><path d="M9 21l4-10 3 7 3-5 4 8" stroke="#e5303a" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <div>
+        <h1>PC 营销内容智能体</h1>
+        <p>场景理解 · 知识库检索 · 图文生成 · 事实与合规核验</p>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <div class="kb-chip" id="kbChip" title="知识库连接状态">
+        <span class="dot"></span><span id="kbText">检测中…</span>
+      </div>
+      <div class="mode-chip" id="modeChip">待连接</div>
+    </div>
+  </header>
+
+  <main class="layout">
+    <!-- 左侧：任务输入 -->
+    <section class="panel input-panel" aria-labelledby="inputTitle">
+      <div class="panel-head">
+        <span class="step-num">01</span>
+        <h2 id="inputTitle">营销任务</h2>
+      </div>
+
+      <form id="taskForm" novalidate>
+        <label class="field">
+          <span class="field-label">产品型号或需求 <em>*</em></span>
+          <input id="product" name="product_query" type="text" placeholder="例如：MateBook 14，或“想买轻薄本”" autocomplete="off" />
+          <div class="presets" id="productPresets"></div>
+        </label>
+
+        <div class="field">
+          <span class="field-label">业务场景</span>
+          <div class="chips" id="sceneChips" role="radiogroup" aria-label="业务场景"></div>
+        </div>
+
+        <label class="field">
+          <span class="field-label">目标人群</span>
+          <input id="audience" name="audience" type="text" placeholder="例如：大学新生" autocomplete="off" />
+        </label>
+
+        <div class="field">
+          <span class="field-label">发布平台</span>
+          <div class="platforms" id="platformCards" role="radiogroup" aria-label="发布平台"></div>
+        </div>
+
+        <label class="field">
+          <span class="field-label">内容目标</span>
+          <input id="goal" name="goal" type="text" placeholder="例如：突出学习、便携和多设备协同" autocomplete="off" />
+        </label>
+
+        <label class="field">
+          <span class="field-label">额外要求</span>
+          <textarea id="extra" name="extra_requirements" rows="2" placeholder="例如：语气轻松一点，不要堆参数"></textarea>
+        </label>
+
+        <details class="demo-box" id="demoBox" hidden>
+          <summary>演示工具（模拟模式）</summary>
+          <div class="demo-inner">
+            <span class="field-label">强制返回状态</span>
+            <div class="seg" id="forceSeg">
+              <button type="button" data-v="auto" class="on">自动</button>
+              <button type="button" data-v="success">成功</button>
+              <button type="button" data-v="partial">部分</button>
+              <button type="button" data-v="needs_input">追问</button>
+              <button type="button" data-v="conflict">冲突</button>
+              <button type="button" data-v="error">失败</button>
+            </div>
+            <span class="field-label">一键填入测试用例</span>
+            <div class="cases" id="caseBtns"></div>
+          </div>
+        </details>
+
+        <button type="submit" class="btn-primary" id="runBtn">
+          <span class="btn-text">生成营销内容</span>
+          <span class="btn-spin" aria-hidden="true"></span>
+          <kbd>Ctrl ↵</kbd>
+        </button>
+      </form>
+    </section>
+
+    <!-- 右侧：流程与结果 -->
+    <section class="result-col" aria-live="polite">
+      <!-- Agent 流程 -->
+      <div class="panel pipeline-panel">
+        <div class="panel-head">
+          <span class="step-num">02</span>
+          <h2>Agent 执行流程</h2>
+          <span class="status-badge" id="statusBadge" hidden></span>
+        </div>
+        <ol class="pipeline" id="pipeline"></ol>
+      </div>
+
+      <!-- 空状态 -->
+      <div class="panel empty-state" id="emptyState">
+        <div class="empty-art" aria-hidden="true">
+          <div class="ring r1"></div><div class="ring r2"></div><div class="ring r3"></div>
+          <div class="core">AI</div>
+        </div>
+        <h3>填写任务，开始生成</h3>
+        <p>事实附带知识库来源；未确认图片会标记为待确认，信息不足时先追问。</p>
+      </div>
+
+      <!-- 状态提示 -->
+      <div class="alert" id="alertBox" hidden></div>
+
+      <!-- 四块结果 -->
+      <div class="results" id="results" hidden>
+        <article class="panel card card-wide">
+          <div class="panel-head"><h2>知识来源</h2></div>
+          <div class="scene-grid" id="knowledgeSource"></div>
+        </article>
+        <article class="panel card" id="cardScene">
+          <div class="panel-head"><span class="step-num">一</span><h2>场景判断</h2></div>
+          <div class="scene-grid" id="sceneGrid"></div>
+        </article>
+
+        <article class="panel card" id="cardEvidence">
+          <div class="panel-head"><span class="step-num">二</span><h2>知识库依据</h2><span class="count" id="evCount"></span></div>
+          <ul class="facts" id="factList"></ul>
+          <div class="media-strip" id="mediaStrip"></div>
+        </article>
+
+        <article class="panel card card-wide" id="cardContent">
+          <div class="panel-head">
+            <span class="step-num">三</span><h2>图文软文</h2>
+            <div class="head-actions">
+              <button class="btn-ghost" id="toggleView" type="button">纯文本</button>
+              <button class="btn-copy" id="copyBtn" type="button" disabled>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>
+                <span>复制文案</span>
+              </button>
+            </div>
+          </div>
+          <div class="preview-stage" id="previewStage"></div>
+          <pre class="plain" id="plainView" hidden></pre>
+        </article>
+
+        <article class="panel card card-wide" id="cardChecks">
+          <div class="panel-head"><span class="step-num">四</span><h2>核验结果</h2><div class="check-summary" id="checkSummary"></div></div>
+          <div class="checks" id="checkList"></div>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <span id="footNote">正在检查真实后端连接。</span>
+  </footer>
+
+  <div class="toast" id="toast" role="status"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
