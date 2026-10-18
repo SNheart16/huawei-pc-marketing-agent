@@ -433,7 +433,7 @@ def run_agent(input_data: dict) -> dict:
     """Retrieve one source, plan evidence, generate and apply deterministic guards.
 
     SYSTEM_PROMPT_PATH optionally points to the team's external approved prompt;
-    otherwise prompts/system.md is read relative to this project, never the cwd.
+    otherwise prompts/system.md is read relative to the repository root, never the cwd.
     All external exceptions are reduced to safe messages; there is no mock path.
     """
     task = dict(input_data) if isinstance(input_data, dict) else {}
@@ -453,7 +453,7 @@ def run_agent(input_data: dict) -> dict:
         if not os.environ.get(name, "").strip():
             return _stop(result, "error", "缺少必要环境变量：" + name)
     try:
-        prompt_path = Path(os.environ.get("SYSTEM_PROMPT_PATH") or _ROOT / "prompts" / "system.md")
+        prompt_path = Path(os.environ.get("SYSTEM_PROMPT_PATH") or _ROOT.parent / "prompts" / "system.md")
         prompt = prompt_path.read_text(encoding="utf-8-sig")
         if not prompt.strip():
             return _stop(result, "error", "系统提示词尚未就绪。")
