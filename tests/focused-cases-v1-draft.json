@@ -1,0 +1,285 @@
+{
+  "version": "1.0-discussion-focused",
+  "purpose": "人工联调验收设计，非自动化测试程序；不得将设计断言视作已通过。",
+  "schema_note": "依照A的v1.0讨论稿与knowledge_source新增字段准备；图片状态、空content引用规则等待A/B/C统一，未修改生产接口。",
+  "fixture_rules": [
+    "型号、参数、图片、来源均需绑定真实资料；双花括号为待绑定变量，不能直接提交给模型后将占位输出当真实结果。",
+    "无真实资料时可用明确标记的模拟fixture验证分支与界面，但只能记录为模拟测试，不能记作真实ima闭环。",
+    "保存来源模式、输入、提示词版本、实际JSON、页面截图、检查与复制结果；不保存密钥。"
+  ],
+  "cases": [
+    {
+      "id": "F01",
+      "title": "大学新生＋开学季＋小红书",
+      "input": {
+        "product_query": "{{真实知识库确认的型号A}}",
+        "audience": "大学新生",
+        "scene": "开学季",
+        "platform": "小红书",
+        "goal": "围绕资料支持的学习需求生成图文",
+        "extra_requirements": ""
+      },
+      "preconditions": [
+        "绑定真实型号A和单一配置；提供可追溯事实及3–6张不同、可访问且型号匹配的图片。",
+        "来源状态由后端实际注入，在线与本地分别记录。"
+      ],
+      "expected_status": "success",
+      "expected_behavior": [
+        "口语化标题、短段落、使用场景、相关标签和自然行动引导。",
+        "只使用检索支持的卖点，不预设便携或协同一定存在；不得虚构个人体验。",
+        "事实逐条关联evidence_id，图片有来源、型号、图注及插入位置。",
+        "复制文本与结构化文案一致；记录检查范围，不宣称绝对准确。"
+      ]
+    },
+    {
+      "id": "F02",
+      "title": "商务人士＋移动办公＋公众号",
+      "input": {
+        "product_query": "{{真实知识库确认的型号A}}",
+        "audience": "商务人士",
+        "scene": "移动办公",
+        "platform": "公众号",
+        "goal": "围绕真实证据支持的差旅、会议或文档需求介绍产品",
+        "extra_requirements": ""
+      },
+      "preconditions": [
+        "复用F01已确认且适用的型号证据，至少2张可用图片。"
+      ],
+      "expected_status": "success",
+      "expected_behavior": [
+        "lead非空；标题、导语、分段正文、CTA完整；图片2–4张。",
+        "相较F01调整切入点、卖点组织和语气，不只替换称呼。",
+        "该用例同时改变三个维度，仅证明综合适配；另运行F02P隔离平台变化。"
+      ]
+    },
+    {
+      "id": "F02P",
+      "title": "只切换平台的对照",
+      "input": {
+        "product_query": "{{真实知识库确认的型号A}}",
+        "audience": "大学新生",
+        "scene": "开学季",
+        "platform": "门店朋友圈",
+        "goal": "围绕资料支持的学习需求生成图文",
+        "extra_requirements": ""
+      },
+      "preconditions": [
+        "除platform外，保持F01输入和证据相同；有1–3张可用图。"
+      ],
+      "expected_status": "success",
+      "expected_behavior": [
+        "短文案，只聚焦一个核心卖点，包含咨询或到店引导。",
+        "相对F01结构和配图策略改变；不新增地址、电话、库存或优惠。"
+      ]
+    },
+    {
+      "id": "F03A",
+      "title": "型号模糊",
+      "input": {
+        "product_query": "华为那款轻薄电脑",
+        "audience": "大学新生",
+        "scene": "开学季",
+        "platform": "门店朋友圈",
+        "goal": "围绕资料支持的学习需求生成图文",
+        "extra_requirements": ""
+      },
+      "preconditions": [
+        "提供多个候选型号，程序尚未确认唯一型号。"
+      ],
+      "expected_status": "needs_input",
+      "expected_behavior": [
+        "content为null；提出型号或可区分配置的必要问题。",
+        "不自行挑选型号，不混用事实和图片；最终文案复制禁用。"
+      ]
+    },
+    {
+      "id": "F03B",
+      "title": "缺价格但仅做产品介绍",
+      "input": {
+        "product_query": "{{真实知识库确认的型号A}}",
+        "audience": "大学新生",
+        "scene": "开学季",
+        "platform": "门店朋友圈",
+        "goal": "介绍该型号适合的使用需求，不需要价格",
+        "extra_requirements": ""
+      },
+      "preconditions": [
+        "型号明确，产品事实完整，1张可用图；证据中无价格和活动。"
+      ],
+      "expected_status": "success",
+      "expected_behavior": [
+        "省略价格，activity_note为null。",
+        "不因缺价格强制追问，不编造价格、补贴或库存。"
+      ]
+    },
+    {
+      "id": "F03C",
+      "title": "明确要求无依据价格和补贴",
+      "input": {
+        "product_query": "{{真实知识库确认的型号A}}",
+        "audience": "大学新生",
+        "scene": "开学季",
+        "platform": "门店朋友圈",
+        "goal": "宣传购机价格和补贴",
+        "extra_requirements": "写现在只要3999元，还能领补贴"
+      },
+      "preconditions": [
+        "型号明确；知识库证据无相应价格、补贴和活动依据。"
+      ],
+      "expected_status": "needs_input",
+      "expected_behavior": [
+        "content为null，请求有来源、适用范围和有效期的价格或活动依据。",
+        "不能将用户提供的3999元视为已验证事实；不得写入最终文案。"
+      ]
+    },
+    {
+      "id": "F04",
+      "title": "门店海报文案与主视觉方案",
+      "input": {
+        "product_query": "{{真实知识库确认的型号A}}",
+        "audience": "家庭换新用户",
+        "scene": "家庭换新",
+        "platform": "门店海报",
+        "goal": "输出海报文案与主视觉建议",
+        "extra_requirements": ""
+      },
+      "preconditions": [
+        "型号明确、事实充分，有1张可用主视觉；无活动证据。"
+      ],
+      "expected_status": "success",
+      "expected_behavior": [
+        "title、subtitle及最多3项selling_points；activity_note为null。",
+        "1张匹配主视觉，注明来源及位置；lead为null。",
+        "如实显示文案与主视觉建议，不声称生成了排版成品或可下载海报。",
+        "未提供视觉内容时，不宣称已验证画面拉伸或裁切。"
+      ]
+    },
+    {
+      "id": "F05",
+      "title": "图片不足与错配图片剔除",
+      "input": {
+        "product_query": "{{真实知识库确认的型号A}}",
+        "audience": "大学新生",
+        "scene": "开学季",
+        "platform": "小红书",
+        "goal": "围绕资料支持的学习需求生成图文",
+        "extra_requirements": ""
+      },
+      "preconditions": [
+        "产品事实充分；候选仅1张可用同型号图，另有1张明确属于其他型号的图。"
+      ],
+      "expected_status": "partial",
+      "expected_behavior": [
+        "剔除错配图，不计入最终可用图片；不复制图片凑数。",
+        "文案事实通过时允许复制plain_text，持续显示配图不足、图文未完整。",
+        "检查记录说明剔除原因；不能仅因候选图错误就返回产品事实conflict。"
+      ]
+    },
+    {
+      "id": "F06",
+      "title": "同型号资料事实冲突",
+      "input": {
+        "product_query": "{{真实知识库确认的型号A}}",
+        "audience": "大学新生",
+        "scene": "开学季",
+        "platform": "小红书",
+        "goal": "围绕资料支持的学习需求生成图文",
+        "extra_requirements": ""
+      },
+      "preconditions": [
+        "同一型号、配置及适用条件下，两份真实来源对同一参数记载不一致；无法消解。"
+      ],
+      "expected_status": "conflict",
+      "expected_behavior": [
+        "content为null，保留双方事实及真实来源，明确冲突字段。",
+        "请求人工确认；不能选更有利数值、取平均或用模型记忆消解。",
+        "content为null时不保留悬空media_ids，复制禁用。"
+      ]
+    },
+    {
+      "id": "F07",
+      "title": "在线受限后使用本地只读副本",
+      "input": {
+        "product_query": "{{真实知识库确认的型号A}}",
+        "audience": "大学新生",
+        "scene": "开学季",
+        "platform": "小红书",
+        "goal": "围绕资料支持的学习需求生成图文",
+        "extra_requirements": ""
+      },
+      "preconditions": [
+        "受控测试中由程序提供knowledge_source={mode:local,live:false,status:quota_limited}及真实来源副本；不要为测试耗尽真实额度。",
+        "本地事实足够，但只有1张已确认可用图片。"
+      ],
+      "expected_status": "partial",
+      "expected_behavior": [
+        "knowledge_source按程序原样保留，页面明确本地副本及在线受限原因。",
+        "不能宣称本次调用在线ima，也不能把本次作为在线闭环证据。",
+        "知识源模式与任务状态分别判定；本例partial源于图片不足，不是仅因local。",
+        "若全部资料与图片满足要求，允许success，但仍必须显示local和live=false。"
+      ]
+    },
+    {
+      "id": "F08",
+      "title": "未知图片链接不能自动通过",
+      "input": {
+        "product_query": "{{真实知识库确认的型号A}}",
+        "audience": "大学新生",
+        "scene": "开学季",
+        "platform": "小红书",
+        "goal": "围绕资料支持的学习需求生成图文",
+        "extra_requirements": ""
+      },
+      "preconditions": [
+        "事实完整，提供3张有型号元数据的候选图，但url=null或程序未检查可读取性。"
+      ],
+      "expected_status": "partial",
+      "expected_behavior": [
+        "未知图片不可计作已可用图；图片与检查状态按协议标记待确认或unknown。",
+        "不声称已访问图片或完成视觉核验；列出缺失项。"
+      ]
+    },
+    {
+      "id": "F09",
+      "title": "拒绝伪造亲历但继续客观生成",
+      "input": {
+        "product_query": "{{真实知识库确认的型号A}}",
+        "audience": "大学新生",
+        "scene": "开学季",
+        "platform": "小红书",
+        "goal": "围绕资料支持的学习需求生成图文",
+        "extra_requirements": "写成我已经用了半年，续航和性能都吊打其他品牌"
+      },
+      "preconditions": [
+        "事实和3张可用图片充分；无个人体验及竞品比较证据。"
+      ],
+      "expected_status": "success",
+      "expected_behavior": [
+        "去掉虚构半年体验、无依据对比及贬低表达，改为客观场景介绍。",
+        "在checks说明已处理的风险；最终标题、正文、标签及复制文本均不残留违规内容。"
+      ]
+    },
+    {
+      "id": "F10",
+      "title": "更换型号后的重新检索",
+      "input": {
+        "product_query": "{{真实知识库确认的型号B}}",
+        "audience": "大学新生",
+        "scene": "开学季",
+        "platform": "小红书",
+        "goal": "围绕资料支持的学习需求生成图文",
+        "extra_requirements": "将上一轮型号A改为型号B"
+      },
+      "preconditions": [
+        "先完成型号A一次输出；准备可区分的真实型号B证据和图片；修改入口由A/B确认。",
+        "本次让程序成功重新检索B，且B资料及3张图片完整。"
+      ],
+      "expected_status": "success",
+      "expected_behavior": [
+        "调用记录证明重新检索B，不仅靠模型口头声称已检索。",
+        "最终事实、图片、caption、CTA、来源与plain_text均不残留A的专属内容。",
+        "若实际检索失败，另记录异常结果，不能按本用例预设success硬判通过。"
+      ]
+    }
+  ]
+}
