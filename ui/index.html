@@ -1,250 +1,58 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>华为 PC 营销内容智能体</title>
-  <link rel="stylesheet" href="styles.css" />
-</head>
-<body>
-  <!-- 背景：透视网格地面 + 华为多设备线框（平板 / 笔记本 / 手机），纯装饰 -->
-  <div class="bg-scene" aria-hidden="true">
-    <div class="bg-floor"></div>
-    <svg class="bg-devices" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMax slice" fill="none">
-      <rect x="150" y="560" width="220" height="300" rx="20" />
-      <rect x="166" y="576" width="188" height="268" rx="8" />
-      <rect x="470" y="420" width="500" height="340" rx="18" />
-      <rect x="490" y="440" width="460" height="296" rx="6" />
-      <path d="M420 760 H1020 L1068 800 Q1072 810 1060 810 H380 Q368 810 372 800 Z" />
-      <rect x="1110" y="600" width="120" height="240" rx="20" />
-      <rect x="1120" y="614" width="100" height="212" rx="10" />
-      <path class="bg-link" d="M260 560 C 300 430, 400 400, 470 470" pathLength="1" />
-      <path class="bg-run" d="M260 560 C 300 430, 400 400, 470 470" pathLength="1" />
-      <path class="bg-link" d="M970 470 C 1060 400, 1150 470, 1170 600" pathLength="1" />
-      <path class="bg-run r2" d="M970 470 C 1060 400, 1150 470, 1170 600" pathLength="1" />
-    </svg>
-  </div>
+<html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>华为 PC 推广创作 · V1</title><link rel="icon" href="data:,"><link rel="stylesheet" href="home-base.css"><link rel="stylesheet" href="prototype.css"></head><body>
+<div id="marketing-creator-home" aria-label="华为 PC 推广工作台">
 
-  <header class="topbar">
-    <div class="brand">
-      <div class="logo" aria-hidden="true">
-        <svg viewBox="0 0 32 32"><rect x="0.5" y="0.5" width="31" height="31" rx="8" fill="none" stroke="currentColor" stroke-opacity=".18"/><path d="M9 21l4-10 3 7 3-5 4 8" stroke="#e5303a" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+<div class="mc-app">
+  <aside class="mc-side">
+    <div class="mc-brand"><span class="mc-brand-icon"><i data-lucide="panels-top-left" aria-hidden="true"></i></span><span>推广工作台</span></div>
+    <nav class="mc-nav" aria-label="主导航">
+      <button type="button" class="is-active" data-page="home" aria-label="推广创作" aria-current="page"><i data-lucide="pen-line" aria-hidden="true"></i><span>推广创作</span></button>
+      <button type="button" data-page="history" aria-label="创作记录"><i data-lucide="folder-open" aria-hidden="true"></i><span>创作记录</span></button>
+      <button type="button" data-page="opportunities" aria-label="推广机会"><i data-lucide="compass" aria-hidden="true"></i><span>推广机会</span></button>
+      <button type="button" data-page="settings" aria-label="门店设置"><i data-lucide="settings" aria-hidden="true"></i><span>门店设置</span></button>
+    </nav>
+    <div class="mc-side-footer"><i data-lucide="laptop" aria-hidden="true"></i><span>华为 PC 推广项目<br><a href="backend.html">真实接口联调</a></span></div>
+  </aside>
+  <main class="mc-main">
+    <header class="mc-top"><strong id="mc-page-label">推广创作</strong><span class="mc-demo">V1 交互原型 · 模拟数据</span></header>
+    <div id="mc-create-page">
+      <div class="mc-home-head" aria-label="首页标题">
+        <h1>华为 PC 推广创作<span class="mc-red-stop" aria-hidden="true"></span></h1>
+        <p>从一个推广想法出发，让 Agent 辅助分析、规划与创作。</p>
       </div>
-      <div>
-        <h1>PC 营销内容智能体</h1>
-        <p>场景理解 · ima 知识库检索 · 图文生成 · 事实与合规核验</p>
-      </div>
-    </div>
-    <div class="topbar-right">
-      <div class="kb-chip" id="kbChip" title="知识库连接状态">
-        <span class="dot"></span><span id="kbText">检测中…</span>
-      </div>
-      <div class="mode-chip" id="modeChip">待连接</div>
-    </div>
-  </header>
-
-  <main class="layout">
-    <!-- 左侧：任务输入 -->
-    <section class="panel input-panel" aria-labelledby="inputTitle">
-      <div class="panel-head">
-        <span class="step-num">01</span>
-        <h2 id="inputTitle">营销任务</h2>
-      </div>
-
-      <form id="taskForm" novalidate>
-        <label class="field">
-          <span class="field-label">产品型号或需求 <em>*</em></span>
-          <input id="product" name="product_query" type="text" placeholder="例如：MateBook 14，或“想买轻薄本”" autocomplete="off" />
-          <div class="presets" id="productPresets"></div>
-        </label>
-
-        <div class="field">
-          <span class="field-label">业务场景</span>
-          <div class="chips" id="sceneChips" role="radiogroup" aria-label="业务场景"></div>
-        </div>
-
-        <label class="field">
-          <span class="field-label">目标人群</span>
-          <input id="audience" name="audience" type="text" placeholder="例如：大学新生" autocomplete="off" />
-        </label>
-
-        <div class="field">
-          <span class="field-label">发布平台</span>
-          <div class="platforms" id="platformCards" role="radiogroup" aria-label="发布平台"></div>
-        </div>
-
-        <label class="field">
-          <span class="field-label">内容目标</span>
-          <input id="goal" name="goal" type="text" placeholder="例如：突出学习、便携和多设备协同" autocomplete="off" />
-        </label>
-
-        <label class="field">
-          <span class="field-label">额外要求</span>
-          <textarea id="extra" name="extra_requirements" rows="2" placeholder="例如：语气轻松一点，不要堆参数"></textarea>
-        </label>
-
-        <details class="demo-box" id="demoBox" hidden>
-          <summary>演示工具（模拟模式）</summary>
-          <div class="demo-inner">
-            <span class="field-label">强制返回状态</span>
-            <div class="seg" id="forceSeg">
-              <button type="button" data-v="auto" class="on">自动</button>
-              <button type="button" data-v="success">成功</button>
-              <button type="button" data-v="partial">部分</button>
-              <button type="button" data-v="needs_input">追问</button>
-              <button type="button" data-v="conflict">冲突</button>
-              <button type="button" data-v="error">失败</button>
+      <div class="mc-home-products" aria-label="推广产品选择">
+        <div class="mc-home-product-row">
+          <span class="mc-home-product-label">推广产品 <small>可选</small></span>
+          <details id="mc-home-product-picker" class="mc-home-product-picker">
+            <summary>搜索或切换产品</summary>
+            <div class="mc-home-product-panel">
+              <label class="mc-search"><span class="sr-only">搜索演示产品目录</span><input id="mc-home-product-search" type="search" placeholder="搜索名称、型号或系列" autocomplete="off" aria-controls="mc-home-product-results" aria-describedby="mc-home-product-source"></label>
+              <p id="mc-home-product-source" class="mc-muted">仅搜索本地演示目录，未覆盖全部在售产品；名称与适配性待核实。</p>
+              <p id="mc-home-product-count" class="mc-muted" role="status"></p>
+              <div id="mc-home-product-results" class="mc-home-product-results" role="group" aria-label="产品搜索结果"></div>
             </div>
-            <span class="field-label">一键填入测试用例</span>
-            <div class="cases" id="caseBtns"></div>
-          </div>
-        </details>
-
-        <button type="submit" class="btn-primary" id="runBtn">
-          <span class="btn-text">生成营销内容</span>
-          <span class="btn-spin" aria-hidden="true"></span>
-          <kbd>Ctrl ↵</kbd>
-        </button>
-      </form>
-    </section>
-
-    <!-- 右侧：流程与结果 -->
-    <section class="result-col" aria-live="polite">
-      <!-- Agent 流程 -->
-      <div class="panel pipeline-panel">
-        <div class="panel-head">
-          <span class="step-num">02</span>
-          <h2>Agent 执行流程</h2>
-          <span class="status-badge" id="statusBadge" hidden></span>
+          </details>
+          <div id="mc-home-product-selection" class="mc-home-product-selection" aria-live="polite"></div>
         </div>
-        <ol class="pipeline" id="pipeline"></ol>
-        <div class="term" id="termBox" hidden>
-          <div class="term-head"><i></i><i></i><i></i><span>请求状态</span><em id="termMode">等待响应</em></div>
-          <div class="term-body" id="termLog" role="log" aria-live="polite"></div>
+        <div class="mc-home-product-help"><span>演示目录 · 当前支持单选</span><button type="button" class="mc-link" data-action="home-product-defer">暂不选择，进入工作台后再确定</button></div>
+      </div>
+      <div class="mc-composer" id="mc-form">
+        <textarea class="mc-prompt" id="mc-prompt" aria-label="描述推广任务" aria-describedby="mc-input-example" placeholder="描述一下你想推广的产品、已有想法或遇到的问题……"></textarea>
+        <div class="mc-compose-bottom">
+          <span class="mc-input-example" id="mc-input-example">例如：想推广一款华为笔记本，让顾客了解实际使用价值，但还没想好切入角度。</span>
+          <button type="button" id="mc-continue" class="mc-primary">开始创作<i data-lucide="arrow-up-right" aria-hidden="true"></i></button>
         </div>
       </div>
-
-      <!-- 空状态：华为多设备线框渲染（平板 · 笔记本 · 手机，演示线框，非官方产品图） -->
-      <div class="panel empty-state hero" id="emptyState">
-        <div class="hero-stage" aria-hidden="true">
-          <svg class="hero-art" viewBox="0 0 560 300" fill="none">
-            <defs>
-              <linearGradient id="scanG" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0" stop-color="var(--accent)" stop-opacity="0" />
-                <stop offset="1" stop-color="var(--accent)" stop-opacity=".22" />
-              </linearGradient>
-              <radialGradient id="shadowG"><stop offset="0" stop-color="#000" stop-opacity=".45" /><stop offset="1" stop-color="#000" stop-opacity="0" /></radialGradient>
-              <clipPath id="dispClip"><rect x="160" y="40" width="240" height="150" rx="3" /></clipPath>
-            </defs>
-            <ellipse cx="280" cy="246" rx="230" ry="10" fill="url(#shadowG)" class="hero-shadow" />
-            <!-- 多屏协同连线：静态虚线 + 移动的光段 -->
-            <path class="link" d="M75 120 C 90 52, 138 46, 156 64" pathLength="1" />
-            <path class="link-run" d="M75 120 C 90 52, 138 46, 156 64" pathLength="1" />
-            <path class="link" d="M404 64 C 456 46, 504 84, 509 140" pathLength="1" />
-            <path class="link-run d2" d="M404 64 C 456 46, 504 84, 509 140" pathLength="1" />
-            <!-- 平板 -->
-            <g class="dev d-tab">
-              <rect class="draw" x="20" y="120" width="110" height="150" rx="10" pathLength="1" />
-              <rect class="draw thin" x="28" y="128" width="94" height="134" rx="4" pathLength="1" />
-              <rect class="ui" x="36" y="138" width="50" height="5" rx="2" />
-              <rect class="ui" x="36" y="150" width="78" height="40" rx="3" />
-              <rect class="ui" x="36" y="198" width="70" height="4" rx="2" />
-              <rect class="ui" x="36" y="208" width="56" height="4" rx="2" />
-            </g>
-            <!-- MateBook 笔记本 -->
-            <g class="dev d-lap">
-              <rect class="draw" x="150" y="30" width="260" height="176" rx="10" pathLength="1" />
-              <rect class="draw thin" x="160" y="40" width="240" height="150" rx="3" pathLength="1" />
-              <circle cx="280" cy="35" r="1.6" class="cam" />
-              <path class="draw" d="M120 206 H440 L466 228 Q468 234 462 234 H98 Q92 234 94 228 Z" pathLength="1" />
-              <path class="draw thin" d="M250 206 v2 a3 3 0 0 0 3 3 h54 a3 3 0 0 0 3 -3 v-2" pathLength="1" />
-              <g clip-path="url(#dispClip)">
-                <rect class="ui" x="168" y="48" width="224" height="9" rx="2" />
-                <rect class="ui img" x="168" y="66" width="100" height="72" rx="3" />
-                <rect class="ui" x="278" y="68" width="110" height="6" rx="2" />
-                <rect class="ui" x="278" y="80" width="88" height="6" rx="2" />
-                <rect class="ui" x="278" y="92" width="102" height="6" rx="2" />
-                <rect class="ui" x="278" y="104" width="64" height="6" rx="2" />
-                <rect class="ui bar b1" x="278" y="122" width="96" height="4" rx="2" />
-                <rect class="ui bar b2" x="278" y="130" width="60" height="4" rx="2" />
-                <circle class="ok" cx="172" cy="156" r="3" /><rect class="ui" x="180" y="154" width="80" height="4" rx="2" />
-                <circle class="ok o2" cx="172" cy="170" r="3" /><rect class="ui" x="180" y="168" width="64" height="4" rx="2" />
-                <rect class="scan" x="160" y="16" width="240" height="24" fill="url(#scanG)" />
-              </g>
-            </g>
-            <!-- 手机 -->
-            <g class="dev d-ph">
-              <rect class="draw" x="478" y="140" width="62" height="124" rx="10" pathLength="1" />
-              <rect class="draw thin" x="483" y="147" width="52" height="110" rx="5" pathLength="1" />
-              <rect class="ui" x="489" y="156" width="40" height="40" rx="3" />
-              <rect class="ui" x="489" y="204" width="34" height="4" rx="2" />
-              <rect class="ui" x="489" y="214" width="26" height="4" rx="2" />
-            </g>
-          </svg>
-          <span class="hero-tag t1">知识库证据检索</span>
-          <span class="hero-tag t2">产品型号核对</span>
-          <span class="hero-tag t3">营销风险检查</span>
-          <span class="hero-tag t4">文案与配图方案</span>
-        </div>
-        <h3>填写任务，开始生成</h3>
-        <p>事实附带知识库来源；未确认图片会标记为待确认，信息不足时先追问。</p>
-        <small class="hero-note">线框为演示示意，非官方产品渲染图</small>
-      </div>
-
-      <!-- 状态提示 -->
-      <div class="alert" id="alertBox" hidden></div>
-
-      <!-- 四块结果 -->
-      <div class="results" id="results" hidden>
-        <article class="panel card card-wide">
-          <div class="panel-head"><h2>知识来源</h2></div>
-          <div class="scene-grid" id="knowledgeSource"></div>
-        </article>
-        <article class="panel card" id="cardScene">
-          <div class="panel-head"><span class="step-num">一</span><h2>场景判断</h2></div>
-          <div class="scene-grid" id="sceneGrid"></div>
-        </article>
-
-        <article class="panel card" id="cardEvidence">
-          <div class="panel-head"><span class="step-num">二</span><h2>知识库依据</h2><span class="count" id="evCount"></span></div>
-          <ul class="facts" id="factList"></ul>
-          <div class="media-strip" id="mediaStrip"></div>
-        </article>
-
-        <article class="panel card card-wide" id="cardBench" hidden>
-          <div class="panel-head"><span class="step-num">◷</span><h2>检索与执行性能</h2><span class="count" id="benchTag"></span></div>
-          <div class="bench" id="benchBody"></div>
-        </article>
-
-        <article class="panel card card-wide" id="cardContent">
-          <div class="panel-head">
-            <span class="step-num">三</span><h2>图文软文</h2>
-            <div class="head-actions">
-              <button class="btn-ghost" id="toggleView" type="button">纯文本</button>
-              <button class="btn-copy" id="copyBtn" type="button" disabled>
-                <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>
-                <span>复制文案</span>
-              </button>
-            </div>
-          </div>
-          <div class="preview-stage" id="previewStage"></div>
-          <pre class="plain" id="plainView" hidden></pre>
-        </article>
-
-        <article class="panel card card-wide" id="cardChecks">
-          <div class="panel-head"><span class="step-num">四</span><h2>核验结果</h2><div class="check-summary" id="checkSummary"></div></div>
-          <div class="checks" id="checkList"></div>
-        </article>
-      </div>
-    </section>
+      <p class="mc-error" id="mc-error" role="alert" hidden></p>
+      <div class="mc-below"><span><i data-lucide="shield-check" aria-hidden="true"></i><span id="mc-task-feedback" aria-live="polite">演示草稿与产品信息均需人工复核</span></span><span class="mc-flow">引导 / 策略 / 推广成果</span></div>
+      <section class="mc-gallery" id="mc-gallery" aria-labelledby="mc-gallery-title">
+        <div class="mc-section-head mc-recommendation-head"><div><h2 id="mc-gallery-title">今日推广推荐</h2><p>结合近期节点、产品特点与门店场景，发现值得尝试的推广方向。</p></div><span id="mc-recommendation-date"></span></div>
+        <div id="mc-opportunity-cards"></div>
+        <div class="mc-gallery-foot">推荐方向供探索，依据会随任务保留。产品与门店条件确认后再采用。</div>
+      </section>
+    </div>
+    <div id="mc-work-page" hidden></div>
   </main>
-
-  <footer class="foot">
-    <span id="footNote">正在检查真实后端连接。</span>
-  </footer>
-
-  <div class="toast" id="toast" role="status"></div>
-
-  <script src="app.js"></script>
-</body>
-</html>
+</div>
+<div id="mc-toast" role="status" aria-live="polite"></div>
+</div><script src="prototype-data.js"></script><script src="guidance.js"></script><script src="prototype.js"></script></body></html>
