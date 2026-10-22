@@ -1,0 +1,14 @@
+{
+  "task_id": "task-synthetic-001",
+  "expected_revision": 4,
+  "claims": [
+    {
+      "claim": "屏幕尺寸为 13.2 英寸。",
+      "fact_references": ["fact-synthetic-001"]
+    },
+    {
+      "claim": "今日优惠 1000 元。",
+      "fact_references": []
+    }
+  ]
+}

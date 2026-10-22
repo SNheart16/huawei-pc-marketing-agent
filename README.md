@@ -1,5 +1,11 @@
 # 华为 PC 营销图文 Agent
 
+## A 模块接入
+
+A 侧真实需求理解、产品检索、生成前后事实核查、策略生成/确认和图文交接已完成端到端验收。接入请先阅读 [A 模块交付说明](docs/agent-core-a-handoff.md)、[API v2](docs/agent-api-v2.md) 和 [可解析契约示例](docs/examples/README.md)。当前团队仓库为 [huawei-pc-marketing-agent](https://github.com/SNheart16/huawei-pc-marketing-agent)。
+
+新版首页尚未接入 v2；`/backend.html` 保留旧 `/api/run` 联调行为。图文生成模块消费 handoff 的联调、真实生图和图片视觉核查仍待完成，图片核查保持 `unknown`。下文保留既有前端原型与旧接口说明。
+
 ## 复赛前端交互原型 V1（当前首页）
 
 当前 `/` 为在原有首页视觉基础上迭代的前端原型，使用本地模拟数据，不需要配置模型或知识库凭证。

@@ -1,0 +1,7 @@
+{
+  "task_id": "task-example-001",
+  "expected_revision": 2,
+  "user_input": "平台改为门店朋友圈，先不写场景",
+  "updates": {"platform": "门店朋友圈"},
+  "clear_fields": ["scene"]
+}

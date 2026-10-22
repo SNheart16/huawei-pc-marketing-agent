@@ -1,0 +1,102 @@
+{
+  "success": true,
+  "data": {
+    "task": {
+      "task_id": "task-synthetic-001",
+      "revision": 5,
+      "source": "direct",
+      "user_input": "合成测试输入，不是实际产品资料",
+      "conversation": [],
+      "product_query": "Synthetic PC model",
+      "audience": "合成受众",
+      "platform": "合成平台",
+      "goal": "合成目标",
+      "scene": "合成场景",
+      "constraints": [],
+      "field_status": {
+        "product_query": "confirmed",
+        "audience": "confirmed",
+        "platform": "confirmed",
+        "goal": "confirmed",
+        "scene": "confirmed",
+        "constraints": "unset"
+      },
+      "excluded_scenes": [],
+      "opportunity_context": null,
+      "fact_records": [
+        {
+          "fact_id": "fact-synthetic-001",
+          "product_model": "Synthetic PC model",
+          "claim": "屏幕尺寸为 13.2 英寸。",
+          "evidence_text": "屏幕尺寸为 13.2 英寸。",
+          "source_ref": "P1/synthetic.md",
+          "source_type": "other",
+          "retrieved_at": "2026-10-22T00:00:00Z",
+          "valid_until": null,
+          "status": "supported"
+        }
+      ],
+      "current_strategy_id": null,
+      "current_strategy_version": null,
+      "workflow_status": "ready_for_strategy"
+    },
+    "fact_check": {
+      "results": [
+        {
+          "task_id": "task-synthetic-001",
+          "task_revision": 4,
+          "claim": "屏幕尺寸为 13.2 英寸。",
+          "fact_references": ["fact-synthetic-001"],
+          "status": "supported",
+          "evidence": ["屏幕尺寸为 13.2 英寸。"],
+          "source_refs": ["P1/synthetic.md"],
+          "reason": "合成示例：当前陈述与本次示例来源一致；不代表真实产品核验。",
+          "suggested_action": "retain"
+        },
+        {
+          "task_id": "task-synthetic-001",
+          "task_revision": 4,
+          "claim": "今日优惠 1000 元。",
+          "fact_references": [],
+          "status": "unsupported",
+          "evidence": [],
+          "source_refs": [],
+          "reason": "合成示例：没有引用当前任务的服务端检索记录。",
+          "suggested_action": "rewrite"
+        }
+      ],
+      "counts": {
+        "supported": 1,
+        "unsupported": 1,
+        "conflicting": 0,
+        "needs_confirmation": 0,
+        "not_applicable": 0
+      },
+      "blocked_fact_ids": [],
+      "knowledge_source": {
+        "mode": "local",
+        "name": "synthetic-source",
+        "live": false,
+        "status": "ok",
+        "message": "合成来源示例"
+      },
+      "source_types": {"fact-synthetic-001": "other"},
+      "warnings": ["supported 不代表资料最新或官方认证。"],
+      "errors": [],
+      "execution_status": "completed",
+      "check_id": "check-synthetic-001",
+      "task_id": "task-synthetic-001",
+      "task_revision": 4,
+      "saved_task_revision": 5,
+      "evidence_revision": 3,
+      "product_model": "Synthetic PC model",
+      "checked_at": "2026-10-22T00:00:00Z",
+      "valid": true,
+      "eligible_fact_ids": ["fact-synthetic-001"],
+      "next_action": "generate_strategy"
+    },
+    "implementation_status": "IMPLEMENTED",
+    "next_action": "generate_strategy"
+  },
+  "error": null
+}

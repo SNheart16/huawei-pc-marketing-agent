@@ -1,0 +1,78 @@
+{
+  "success": true,
+  "data": {
+    "implementation_status": "IMPLEMENTED",
+    "task": {
+      "task_id": "task-example-001",
+      "revision": 6,
+      "source": "direct",
+      "user_input": "合成结构示例，不是实际检索任务",
+      "conversation": [
+        {"role": "user", "text": "合成结构示例，不是实际检索任务", "at": "2026-10-22T00:00:00Z"},
+        {"role": "assistant", "text": "合成需求摘要，仅供接口开发。", "at": "2026-10-22T00:00:01Z"}
+      ],
+      "product_query": "SYNTHETIC_TEST_MODEL",
+      "audience": "合成受众",
+      "platform": "小红书",
+      "goal": "验证检索接口结构",
+      "scene": "离线测试场景",
+      "constraints": [],
+      "field_status": {
+        "product_query": "confirmed", "audience": "confirmed", "platform": "confirmed",
+        "goal": "confirmed", "scene": "confirmed", "constraints": "unset"
+      },
+      "excluded_scenes": [],
+      "opportunity_context": null,
+      "current_strategy_id": null,
+      "current_strategy_version": null,
+      "workflow_status": "ready_for_strategy",
+      "fact_records": [
+        {
+          "fact_id": "fact-example-001",
+          "product_model": "SYNTHETIC_TEST_MODEL",
+          "claim": "合成规格字段：示例值（合成）",
+          "evidence_text": "合成原文证据（仅结构示例，不是产品事实）",
+          "source_ref": "P1/示例文档.md",
+          "source_type": "other",
+          "retrieved_at": "2026-10-22T00:00:00Z",
+          "valid_until": null,
+          "status": "retrieved"
+        }
+      ]
+    },
+    "research": {
+      "status": "partial",
+      "query": "SYNTHETIC_TEST_MODEL",
+      "selected_product_model": "SYNTHETIC_TEST_MODEL",
+      "candidate_models": [],
+      "documents": [
+        {"document_title": "示例文档.md", "source_ref": "P1/示例文档.md", "fact_ids": ["fact-example-001"]}
+      ],
+      "fact_records": [
+        {
+          "fact_id": "fact-example-001",
+          "product_model": "SYNTHETIC_TEST_MODEL",
+          "claim": "合成规格字段：示例值（合成）",
+          "evidence_text": "合成原文证据（仅结构示例，不是产品事实）",
+          "source_ref": "P1/示例文档.md",
+          "source_type": "other",
+          "retrieved_at": "2026-10-22T00:00:00Z",
+          "valid_until": null,
+          "status": "retrieved"
+        }
+      ],
+      "knowledge_source": {
+        "mode": "local",
+        "name": "任德耀新建华为PC知识库",
+        "live": false,
+        "status": "ok",
+        "message": "示例来源信息；不表示真实检索已运行。"
+      },
+      "warnings": ["合成示例：部分资料的有效期未知。"],
+      "missing_information": ["合成示例：需要后续核查事实。"],
+      "next_action": "check_facts"
+    },
+    "next_action": "check_facts"
+  },
+  "error": null
+}

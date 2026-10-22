@@ -1,0 +1,10 @@
+{
+  "source": "direct",
+  "user_input": "为大学新生准备开学季电脑内容",
+  "product_query": "HUAWEI MateBook X Pro 酷睿 Ultra 微绒典藏版",
+  "audience": "大学新生",
+  "scene": "开学季",
+  "platform": "小红书",
+  "goal": "介绍有来源支持的学习场景",
+  "constraints": ["不写价格和个人体验"]
+}

@@ -1,0 +1,16 @@
+{
+  "task_id": "task-synthetic-001",
+  "expected_revision": 7,
+  "strategy_id": "strategy-synthetic-001",
+  "strategy_version": 1,
+  "content": {
+    "title": "合成契约核查示例",
+    "body": "合成测试属性：示例值。",
+    "cta": "",
+    "plain_text": "合成测试属性：示例值。",
+    "images": [],
+    "fact_references": [
+      "fact-synthetic-001"
+    ]
+  }
+}

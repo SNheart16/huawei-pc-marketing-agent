@@ -1,0 +1,397 @@
+{
+  "success": true,
+  "data": {
+    "handoff": {
+      "task": {
+        "task_id": "task-synthetic-001",
+        "revision": 7,
+        "source": "direct",
+        "user_input": "仅用于策略接口契约测试",
+        "conversation": [],
+        "product_query": "SYNTHETIC_TEST_MODEL",
+        "audience": "大学新生",
+        "platform": "小红书",
+        "goal": "介绍有来源支持的信息",
+        "scene": "开学季",
+        "constraints": [
+          "不写价格或优惠"
+        ],
+        "field_status": {
+          "product_query": "confirmed",
+          "audience": "confirmed",
+          "platform": "confirmed",
+          "goal": "confirmed",
+          "scene": "confirmed",
+          "constraints": "confirmed"
+        },
+        "excluded_scenes": [],
+        "opportunity_context": null,
+        "fact_records": [
+          {
+            "fact_id": "fact-synthetic-001",
+            "product_model": "SYNTHETIC_TEST_MODEL",
+            "claim": "合成测试属性：示例值。",
+            "evidence_text": "合成测试属性：示例值。",
+            "source_ref": "fixtures/synthetic-fact.md",
+            "source_type": "other",
+            "retrieved_at": "2026-10-22T00:00:00Z",
+            "valid_until": null,
+            "status": "supported"
+          }
+        ],
+        "current_strategy_id": "strategy-synthetic-001",
+        "current_strategy_version": 1,
+        "workflow_status": "strategy_confirmed"
+      },
+      "strategy": {
+        "task_summary": "为大学新生在开学季规划一份小红书图文主题。",
+        "topic": "建议以开学季信息整理为内容主题。",
+        "audience": {
+          "description": "大学新生",
+          "basis": "来自当前任务的用户确认输入。",
+          "basis_type": "user_provided"
+        },
+        "audience_need": "待确认的需求推断：受众希望先查看产品信息，仍需具体人群确认。",
+        "core_message": "合成测试属性：示例值。",
+        "content_angle": "建议以信息卡方式呈现已核验内容，不增加体验或效果断言。",
+        "content_format": "小红书图文信息卡",
+        "content_outline": [
+          {
+            "section": "开场",
+            "purpose": "建议提出一个与开学准备相关的问题。",
+            "fact_references": []
+          },
+          {
+            "section": "产品信息",
+            "purpose": "合成测试属性：示例值。",
+            "fact_references": [
+              "fact-synthetic-001"
+            ]
+          }
+        ],
+        "cta": "",
+        "fact_references": [
+          "fact-synthetic-001"
+        ],
+        "assumptions": [
+          "待确认的需求推断：受众希望先查看产品信息，仍需具体人群确认。"
+        ],
+        "pending_confirmations": [
+          "发布前确认具体受众偏好的表达方式。"
+        ],
+        "risk_notes": [
+          "fixture 不得用于产品宣传；本示例不代表真实核查结果。"
+        ],
+        "strategy_id": "strategy-synthetic-001",
+        "task_id": "task-synthetic-001",
+        "task_revision": 5,
+        "strategy_version": 1,
+        "confirmation_status": "confirmed",
+        "confirmed_at_task_revision": 7
+      },
+      "fact_records": [
+        {
+          "fact_id": "fact-synthetic-001",
+          "product_model": "SYNTHETIC_TEST_MODEL",
+          "claim": "合成测试属性：示例值。",
+          "evidence_text": "合成测试属性：示例值。",
+          "source_ref": "fixtures/synthetic-fact.md",
+          "source_type": "other",
+          "retrieved_at": "2026-10-22T00:00:00Z",
+          "valid_until": null,
+          "status": "supported"
+        }
+      ],
+      "fact_checks": [
+        {
+          "check_id": "check-synthetic-001",
+          "task_revision": 4,
+          "evidence_revision": 3,
+          "knowledge_source": {
+            "mode": "local",
+            "name": "synthetic-source",
+            "live": false,
+            "status": "ok",
+            "message": "合成来源示例"
+          },
+          "warnings": [
+            "合成示例；supported 不表示资料最新或官方认证。"
+          ],
+          "results": [
+            {
+              "task_id": "task-synthetic-001",
+              "task_revision": 4,
+              "claim": "合成测试属性：示例值。",
+              "fact_references": [
+                "fact-synthetic-001"
+              ],
+              "status": "supported",
+              "evidence": [
+                "合成测试属性：示例值。"
+              ],
+              "source_refs": [
+                "fixtures/synthetic-fact.md"
+              ],
+              "reason": "合成示例：不代表真实产品事实或实际核查结论。",
+              "suggested_action": "retain"
+            }
+          ]
+        }
+      ],
+      "strategy_check": {
+        "status": "passed",
+        "draft": {
+          "task_summary": "为大学新生在开学季规划一份小红书图文主题。",
+          "topic": "建议以开学季信息整理为内容主题。",
+          "audience": {
+            "description": "大学新生",
+            "basis": "来自当前任务的用户确认输入。",
+            "basis_type": "user_provided"
+          },
+          "audience_need": "待确认的需求推断：受众希望先查看产品信息，仍需具体人群确认。",
+          "core_message": "合成测试属性：示例值。",
+          "content_angle": "建议以信息卡方式呈现已核验内容，不增加体验或效果断言。",
+          "content_format": "小红书图文信息卡",
+          "content_outline": [
+            {
+              "section": "开场",
+              "purpose": "建议提出一个与开学准备相关的问题。",
+              "fact_references": []
+            },
+            {
+              "section": "产品信息",
+              "purpose": "合成测试属性：示例值。",
+              "fact_references": [
+                "fact-synthetic-001"
+              ]
+            }
+          ],
+          "cta": "",
+          "fact_references": [
+            "fact-synthetic-001"
+          ],
+          "assumptions": [
+            "待确认的需求推断：受众希望先查看产品信息，仍需具体人群确认。"
+          ],
+          "pending_confirmations": [
+            "发布前确认具体受众偏好的表达方式。"
+          ],
+          "risk_notes": [
+            "fixture 不得用于产品宣传；本示例不代表真实核查结果。"
+          ]
+        },
+        "fact_claims": [
+          {
+            "field_path": "core_message",
+            "claim": "合成测试属性：示例值。",
+            "fact_references": [
+              "fact-synthetic-001"
+            ]
+          },
+          {
+            "field_path": "content_outline[1].purpose",
+            "claim": "合成测试属性：示例值。",
+            "fact_references": [
+              "fact-synthetic-001"
+            ]
+          }
+        ],
+        "coverage_review": {
+          "fields": [
+            {
+              "field_path": "task_summary",
+              "text": "为大学新生在开学季规划一份小红书图文主题。",
+              "kind": "planning",
+              "claims": []
+            },
+            {
+              "field_path": "topic",
+              "text": "建议以开学季信息整理为内容主题。",
+              "kind": "planning",
+              "claims": []
+            },
+            {
+              "field_path": "audience.description",
+              "text": "大学新生",
+              "kind": "planning",
+              "claims": []
+            },
+            {
+              "field_path": "audience.basis",
+              "text": "来自当前任务的用户确认输入。",
+              "kind": "planning",
+              "claims": []
+            },
+            {
+              "field_path": "audience_need",
+              "text": "待确认的需求推断：受众希望先查看产品信息，仍需具体人群确认。",
+              "kind": "assumption",
+              "claims": []
+            },
+            {
+              "field_path": "core_message",
+              "text": "合成测试属性：示例值。",
+              "kind": "factual",
+              "claims": [
+                "合成测试属性：示例值。"
+              ]
+            },
+            {
+              "field_path": "content_angle",
+              "text": "建议以信息卡方式呈现已核验内容，不增加体验或效果断言。",
+              "kind": "planning",
+              "claims": []
+            },
+            {
+              "field_path": "content_format",
+              "text": "小红书图文信息卡",
+              "kind": "planning",
+              "claims": []
+            },
+            {
+              "field_path": "content_outline[0].section",
+              "text": "开场",
+              "kind": "planning",
+              "claims": []
+            },
+            {
+              "field_path": "content_outline[0].purpose",
+              "text": "建议提出一个与开学准备相关的问题。",
+              "kind": "planning",
+              "claims": []
+            },
+            {
+              "field_path": "content_outline[1].section",
+              "text": "产品信息",
+              "kind": "planning",
+              "claims": []
+            },
+            {
+              "field_path": "content_outline[1].purpose",
+              "text": "合成测试属性：示例值。",
+              "kind": "factual",
+              "claims": [
+                "合成测试属性：示例值。"
+              ]
+            },
+            {
+              "field_path": "assumptions[0]",
+              "text": "待确认的需求推断：受众希望先查看产品信息，仍需具体人群确认。",
+              "kind": "assumption",
+              "claims": []
+            },
+            {
+              "field_path": "pending_confirmations[0]",
+              "text": "发布前确认具体受众偏好的表达方式。",
+              "kind": "planning",
+              "claims": []
+            },
+            {
+              "field_path": "risk_notes[0]",
+              "text": "fixture 不得用于产品宣传；本示例不代表真实核查结果。",
+              "kind": "planning",
+              "claims": []
+            }
+          ]
+        },
+        "fact_check": {
+          "results": [
+            {
+              "task_id": "task-synthetic-001",
+              "task_revision": 5,
+              "claim": "合成测试属性：示例值。",
+              "fact_references": [
+                "fact-synthetic-001"
+              ],
+              "status": "supported",
+              "evidence": [
+                "合成测试属性：示例值。"
+              ],
+              "source_refs": [
+                "fixtures/synthetic-fact.md"
+              ],
+              "reason": "合成示例：不代表真实产品事实或实际核查结论。",
+              "suggested_action": "retain"
+            },
+            {
+              "task_id": "task-synthetic-001",
+              "task_revision": 5,
+              "claim": "合成测试属性：示例值。",
+              "fact_references": [
+                "fact-synthetic-001"
+              ],
+              "status": "supported",
+              "evidence": [
+                "合成测试属性：示例值。"
+              ],
+              "source_refs": [
+                "fixtures/synthetic-fact.md"
+              ],
+              "reason": "合成示例：不代表真实产品事实或实际核查结论。",
+              "suggested_action": "retain"
+            }
+          ],
+          "counts": {
+            "supported": 2,
+            "unsupported": 0,
+            "conflicting": 0,
+            "needs_confirmation": 0,
+            "not_applicable": 0
+          },
+          "blocked_fact_ids": [],
+          "knowledge_source": {
+            "mode": "local",
+            "name": "synthetic-source",
+            "live": false,
+            "status": "ok",
+            "message": "合成来源示例"
+          },
+          "source_types": {
+            "fact-synthetic-001": "other"
+          },
+          "warnings": [
+            "合成示例；supported 不表示资料最新或官方认证。"
+          ],
+          "errors": [],
+          "execution_status": "completed"
+        },
+        "attempts": 1,
+        "blocking_items": [],
+        "valid": true,
+        "strategy_id": "strategy-synthetic-001",
+        "strategy_version": 1,
+        "task_id": "task-synthetic-001",
+        "task_revision": 5,
+        "evidence_revision": 3,
+        "checked_at": "2026-10-22T00:00:00Z"
+      },
+      "knowledge_source": {
+        "mode": "local",
+        "name": "synthetic-source",
+        "live": false,
+        "status": "ok",
+        "message": "合成来源示例"
+      },
+      "source_limits": [
+        "合成示例；supported 不表示资料最新或官方认证。"
+      ],
+      "platform_requirements": {
+        "platform": "小红书",
+        "content_format": "小红书图文信息卡"
+      },
+      "user_constraints": [
+        "不写价格或优惠"
+      ],
+      "pending_confirmations": [
+        "发布前确认具体受众偏好的表达方式。"
+      ],
+      "images": [],
+      "image_status": "unknown",
+      "warnings": [
+        "本阶段未核验图片；空列表不代表已确认有可用图片。"
+      ]
+    },
+    "implementation_status": "IMPLEMENTED"
+  },
+  "error": null
+}
