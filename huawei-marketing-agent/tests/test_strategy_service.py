@@ -157,7 +157,7 @@ class StrategyServiceTests(unittest.TestCase):
         context["test_example"] = "PRIVATE_EXAMPLE"
         payload = _generation_payload(task, eligible, context)
         encoded = json.dumps(payload, ensure_ascii=False)
-        self.assertEqual(set(payload), {"task", "source_limits", "eligible_fact_records"})
+        self.assertEqual(set(payload), {"task", "scenario_inputs", "source_limits", "eligible_fact_records"})
         self.assertEqual([record["fact_id"] for record in payload["eligible_fact_records"]], ["F1"])
         for value in ("PRIVATE_UNRELATED_HISTORY", "PRIVATE_ORIGINAL_TEXT", "PRIVATE_SOURCE_MESSAGE",
                       "PRIVATE_EXAMPLE", "F2", "evidence_documents", "retrieved_fact_records"):
@@ -609,6 +609,45 @@ class StrategyServiceTests(unittest.TestCase):
         for version in (1.0, True, "1"):
             with self.assertRaises(WorkflowError):
                 self.repo.creative_handoff(task["task_id"], task["revision"], strategy["strategy_id"], version)
+
+    def test_strategy_and_handoff_carry_unverified_scenario_context(self):
+        scenario_inputs = {
+            "time": {"text": "秋季开学季"},
+            "store": {"location_text": "校园周边门店", "nearby_landmarks": ["用户填写的学校"]},
+            "usage": {"text": "阅读课程资料和整理笔记"},
+        }
+        task = seed(self.repo, scenario_inputs=scenario_inputs)
+        task, context, eligible = self.repo.strategy_snapshot(task["task_id"], task["revision"])
+        model = ModelFixture()
+        assessment = StrategyService(model).generate(task, eligible, context)
+        sent = model.calls[0]["scenario_inputs"]
+        self.assertEqual(sent["usage"]["text"], "阅读课程资料和整理笔记")
+        self.assertEqual(sent["usage"]["verification_status"], "unverified")
+        self.assertFalse(model.calls[0]["source_limits"]["knowledge_source"]["live"])
+
+        task, strategy = self.repo.add_strategy(
+            task["task_id"], task["revision"], assessment["draft"], assessment=assessment, context=context)
+        task, _ = self.repo.confirm_strategy(
+            task["task_id"], task["revision"], strategy["strategy_id"], strategy["strategy_version"])
+        handoff = self.repo.creative_handoff(
+            task["task_id"], task["revision"], strategy["strategy_id"], strategy["strategy_version"])
+        self.assertEqual(handoff["task"]["scenario_inputs"], task["scenario_inputs"])
+        self.assertEqual(handoff["task"]["scene"], "开学季")
+        self.assertNotEqual(handoff["task"]["scene"], handoff["task"]["scenario_inputs"]["usage"]["text"])
+
+    def test_scenario_change_invalidates_strategy_but_preserves_product_facts(self):
+        task, strategy = self.save()
+        task, _ = self.repo.confirm_strategy(
+            task["task_id"], task["revision"], strategy["strategy_id"], strategy["strategy_version"])
+        task = self.repo.update(task["task_id"], task["revision"], {
+            "task_id": task["task_id"], "expected_revision": task["revision"],
+            "user_input": "使用场景改为整理课堂笔记。", "updates": {}, "clear_fields": [],
+            "scenario_inputs": {"usage": {"text": "整理课堂笔记"}},
+        })
+        self.assertIsNone(task["current_strategy_id"])
+        self.assertEqual(task["fact_records"][0]["status"], "supported")
+        self.assertTrue(self.repo.get_fact_checks(task["task_id"])[0]["valid"])
+        self.assertFalse(self.repo.get_strategy_check(task["task_id"], strategy["strategy_id"])["valid"])
 
     def test_other_task_cannot_confirm_or_reuse_strategy(self):
         task, strategy = self.save()

@@ -1,0 +1,11 @@
+{
+  "task_id": "<placeholder-task-id>",
+  "expected_revision": 2,
+  "user_input": "课程资料整理，也包括课堂笔记整理，不写价格。",
+  "card_answers": [
+    {
+      "question_id": "<placeholder-question-id>",
+      "option_ids": ["<placeholder-option-id-1>"]
+    }
+  ]
+}

@@ -1,0 +1,40 @@
+{
+  "success": true,
+  "data": {
+    "task": {
+      "task_id": "<placeholder-task-id>",
+      "revision": 8,
+      "source": "direct",
+      "user_input": "为大学新生准备开学季电脑推广。",
+      "conversation": [],
+      "product_query": "HUAWEI MateBook X Pro 酷睿 Ultra 微绒典藏版",
+      "audience": "大学新生",
+      "platform": "小红书",
+      "goal": "介绍有来源支持的学习场景",
+      "scene": "开学季",
+      "constraints": ["不写价格"],
+      "scenario_inputs": {
+        "time": {"text": "秋季开学季", "field_status": "confirmed", "source": "user_input", "verification_status": "unverified"},
+        "store": {"location_text": "", "location_status": "cleared", "nearby_landmarks": [], "nearby_landmarks_status": "unset", "source": "user_input", "verification_status": "unverified"},
+        "usage": {"text": "课程资料整理、课堂笔记", "field_status": "confirmed", "source": "user_input", "verification_status": "unverified"}
+      },
+      "field_status": {"product_query": "confirmed", "audience": "confirmed", "platform": "confirmed", "goal": "confirmed", "scene": "confirmed", "constraints": "confirmed"},
+      "question_cards": [],
+      "excluded_scenes": [],
+      "opportunity_context": null,
+      "fact_records": [],
+      "current_strategy_id": null,
+      "current_strategy_version": null,
+      "workflow_status": "ready_for_strategy"
+    },
+    "understanding": {
+      "implementation_status": "IMPLEMENTED",
+      "summary": "面向大学新生，在开学季通过小红书介绍有依据的学习场景。",
+      "questions": [],
+      "question_cards": []
+    },
+    "missing_information": [],
+    "next_action": "research_product"
+  },
+  "error": null
+}

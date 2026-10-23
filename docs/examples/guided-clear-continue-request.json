@@ -1,0 +1,6 @@
+{
+  "task_id": "<placeholder-task-id>",
+  "expected_revision": 6,
+  "user_input": "不指定门店位置。",
+  "clear_fields": ["scenario_inputs.store.location_text"]
+}
