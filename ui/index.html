@@ -1,58 +1,71 @@
 <!DOCTYPE html>
-<html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>华为 PC 推广创作 · V1</title><link rel="icon" href="data:,"><link rel="stylesheet" href="home-base.css"><link rel="stylesheet" href="prototype.css"></head><body>
-<div id="marketing-creator-home" aria-label="华为 PC 推广工作台">
+<html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>华为产品推广工作台 · V1</title><link rel="icon" href="data:,"><link rel="stylesheet" href="home-base.css"><link rel="stylesheet" href="prototype.css"><link rel="stylesheet" href="guide-v2.css"></head><body>
+<div id="marketing-creator-home" aria-label="华为产品推广工作台">
 
 <div class="mc-app">
   <aside class="mc-side">
-    <div class="mc-brand"><span class="mc-brand-icon"><i data-lucide="panels-top-left" aria-hidden="true"></i></span><span>推广工作台</span></div>
+    <div class="mc-brand"><span class="mc-brand-icon"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3.5" y="5" width="17" height="11" rx="2" stroke="#fff" stroke-width="1.8"/><path d="M2 19h20" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/><path d="M12 8.2l.8 2.1 2.1.8-2.1.8-.8 2.1-.8-2.1-2.1-.8 2.1-.8Z" fill="#fff"/></svg></span><span>华为产品推广工作台</span></div>
     <nav class="mc-nav" aria-label="主导航">
       <button type="button" class="is-active" data-page="home" aria-label="推广创作" aria-current="page"><i data-lucide="pen-line" aria-hidden="true"></i><span>推广创作</span></button>
       <button type="button" data-page="history" aria-label="创作记录"><i data-lucide="folder-open" aria-hidden="true"></i><span>创作记录</span></button>
       <button type="button" data-page="opportunities" aria-label="推广机会"><i data-lucide="compass" aria-hidden="true"></i><span>推广机会</span></button>
       <button type="button" data-page="settings" aria-label="门店设置"><i data-lucide="settings" aria-hidden="true"></i><span>门店设置</span></button>
     </nav>
-    <div class="mc-side-footer"><i data-lucide="laptop" aria-hidden="true"></i><span>华为 PC 推广项目<br><a href="backend.html">真实接口联调</a></span></div>
+    <div class="mc-side-footer"><i data-lucide="laptop" aria-hidden="true"></i><span>华为产品推广项目<br><a href="backend.html">真实接口联调</a></span></div>
+    <button type="button" class="mc-collapse-btn" data-action="side-collapse" aria-label="收起侧边栏"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="m11 7-5 5 5 5M19 7l-5 5 5 5"/></svg><span class="mc-collapse-label">收起导航</span></button>
   </aside>
   <main class="mc-main">
+    <canvas id="mc-fx" aria-hidden="true"></canvas>
     <header class="mc-top"><strong id="mc-page-label">推广创作</strong><span class="mc-demo">V1 交互原型 · 模拟数据</span></header>
     <div id="mc-create-page">
-      <div class="mc-home-head" aria-label="首页标题">
-        <h1>华为 PC 推广创作<span class="mc-red-stop" aria-hidden="true"></span></h1>
-        <p>从一个推广想法出发，让 Agent 辅助分析、规划与创作。</p>
-      </div>
-      <div class="mc-home-products" aria-label="推广产品选择">
-        <div class="mc-home-product-row">
-          <span class="mc-home-product-label">推广产品 <small>可选</small></span>
-          <details id="mc-home-product-picker" class="mc-home-product-picker">
-            <summary>搜索或切换产品</summary>
-            <div class="mc-home-product-panel">
-              <label class="mc-search"><span class="sr-only">搜索演示产品目录</span><input id="mc-home-product-search" type="search" placeholder="搜索名称、型号或系列" autocomplete="off" aria-controls="mc-home-product-results" aria-describedby="mc-home-product-source"></label>
-              <p id="mc-home-product-source" class="mc-muted">仅搜索本地演示目录，未覆盖全部在售产品；名称与适配性待核实。</p>
-              <p id="mc-home-product-count" class="mc-muted" role="status"></p>
-              <div id="mc-home-product-results" class="mc-home-product-results" role="group" aria-label="产品搜索结果"></div>
+      <div class="mc-hero" id="mc-hero">
+        <div class="mc-home-head" aria-label="首页标题">
+          <h1>今天想推广什么？</h1>
+          <p>说出一个想法，剩下的交给引导流程</p>
+        </div>
+        <div class="mc-home-products" aria-label="推广产品选择">
+          <div class="mc-home-product-row">
+            <span class="mc-home-product-label">推广产品 <small>可选</small></span>
+            <details id="mc-home-product-picker" class="mc-home-product-picker">
+              <summary>搜索或切换产品</summary>
+              <div class="mc-home-product-panel">
+                <label class="mc-search"><span class="sr-only">搜索演示产品目录</span><input id="mc-home-product-search" type="search" placeholder="搜索名称、型号或系列" autocomplete="off" aria-controls="mc-home-product-results" aria-describedby="mc-home-product-source"></label>
+                <p id="mc-home-product-source" class="mc-muted">仅搜索本地演示目录，未覆盖全部在售产品；名称与适配性待核实。</p>
+                <p id="mc-home-product-count" class="mc-muted" role="status"></p>
+                <div id="mc-home-product-results" class="mc-home-product-results" role="group" aria-label="产品搜索结果"></div>
+              </div>
+            </details>
+            <div id="mc-home-product-selection" class="mc-home-product-selection" aria-live="polite"></div>
+          </div>
+          <div class="mc-home-product-help"><span>演示目录 · 当前支持单选</span><button type="button" class="mc-link" data-action="home-product-defer">暂不选择，进入工作台后再确定</button></div>
+        </div>
+        <div class="mc-composer" id="mc-form">
+          <textarea class="mc-prompt" id="mc-prompt" aria-label="描述推广任务" aria-describedby="mc-input-example" placeholder="描述一下你想推广的产品、已有想法或遇到的问题……"></textarea>
+          <div class="mc-compose-bottom">
+            <span class="mc-input-example" id="mc-input-example">例如：想推广一款华为笔记本，让顾客了解实际使用价值，但还没想好切入角度。</span>
+            <div class="mc-platform-picker">
+              <button type="button" class="mc-platform-toggle" id="mc-platform-toggle" data-action="home-platform-toggle" aria-expanded="false" aria-haspopup="true">发布到：<strong id="mc-platform-toggle-text">微信朋友圈</strong><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
+              <div class="mc-platform-menu" id="mc-home-platform-menu" role="menu" aria-label="选择发布平台" hidden></div>
             </div>
-          </details>
-          <div id="mc-home-product-selection" class="mc-home-product-selection" aria-live="polite"></div>
+            <button type="button" id="mc-continue" class="mc-primary">开始创作<i data-lucide="arrow-up-right" aria-hidden="true"></i></button>
+          </div>
         </div>
-        <div class="mc-home-product-help"><span>演示目录 · 当前支持单选</span><button type="button" class="mc-link" data-action="home-product-defer">暂不选择，进入工作台后再确定</button></div>
-      </div>
-      <div class="mc-composer" id="mc-form">
-        <textarea class="mc-prompt" id="mc-prompt" aria-label="描述推广任务" aria-describedby="mc-input-example" placeholder="描述一下你想推广的产品、已有想法或遇到的问题……"></textarea>
-        <div class="mc-compose-bottom">
-          <span class="mc-input-example" id="mc-input-example">例如：想推广一款华为笔记本，让顾客了解实际使用价值，但还没想好切入角度。</span>
-          <button type="button" id="mc-continue" class="mc-primary">开始创作<i data-lucide="arrow-up-right" aria-hidden="true"></i></button>
+        <p class="mc-error" id="mc-error" role="alert" hidden></p>
+        <div class="mc-below"><span><i data-lucide="shield-check" aria-hidden="true"></i><span id="mc-task-feedback" aria-live="polite">演示草稿与产品信息均需人工复核</span></span><span class="mc-flow">引导 / 策略 / 推广成果</span></div>
+        <div class="mc-trust" aria-label="支持发布的平台">
+          <span class="mc-trust-label">一次创作，多处发布</span>
+          <div class="mc-trust-row">
+            <span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a8 8 0 0 1-8 8c-1.2 0-2.4-.3-3.4-.7L5 20l.8-3.2A8 8 0 1 1 21 12Z"/></svg>朋友圈</span>
+            <span><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M9 9h6v6H9z"/></svg>小红书</span>
+            <span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg>公众号</span>
+            <span><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6"/></svg>门店海报</span>
+            <span><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>更多平台</span>
+          </div>
         </div>
       </div>
-      <p class="mc-error" id="mc-error" role="alert" hidden></p>
-      <div class="mc-below"><span><i data-lucide="shield-check" aria-hidden="true"></i><span id="mc-task-feedback" aria-live="polite">演示草稿与产品信息均需人工复核</span></span><span class="mc-flow">引导 / 策略 / 推广成果</span></div>
-      <section class="mc-gallery" id="mc-gallery" aria-labelledby="mc-gallery-title">
-        <div class="mc-section-head mc-recommendation-head"><div><h2 id="mc-gallery-title">今日推广推荐</h2><p>结合近期节点、产品特点与门店场景，发现值得尝试的推广方向。</p></div><span id="mc-recommendation-date"></span></div>
-        <div id="mc-opportunity-cards"></div>
-        <div class="mc-gallery-foot">推荐方向供探索，依据会随任务保留。产品与门店条件确认后再采用。</div>
-      </section>
     </div>
     <div id="mc-work-page" hidden></div>
   </main>
 </div>
 <div id="mc-toast" role="status" aria-live="polite"></div>
-</div><script src="prototype-data.js"></script><script src="guidance.js"></script><script src="prototype.js"></script></body></html>
+</div><script src="prototype-data.js"></script><script src="guidance.js"></script><script src="prototype.js"></script><script src="home-fx.js"></script></body></html>

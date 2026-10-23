@@ -1,0 +1,1358 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Huawei PC Marketing Agent — Geo API 协作契约",
+    "version": "0.1.0-draft",
+    "description": "新增地图能力的提议契约，用于 A/B/C 对齐和并行开发。未读取当前仓库，未实现或验证路由，不能作为已交付能力证明。所有 example、query_id、poi_id、坐标、距离和时间均为合成数据，不是高德真实响应。前端基于此文件模拟时必须显示模拟标识。高德原始响应由后端归一化，不能直接替代本契约。"
+  },
+  "servers": [
+    {
+      "url": "/",
+      "description": "同源服务；沿用现有应用实际 host/port，禁止硬编码开发者机器地址"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Geo",
+      "description": "地点查询和用户确认的地理上下文"
+    }
+  ],
+  "paths": {
+    "/api/geo/search": {
+      "get": {
+        "tags": [
+          "Geo"
+        ],
+        "operationId": "searchGeoPlaces",
+        "summary": "按城市和关键字搜索门店或地点",
+        "description": "只查询，不修改任务 revision。城市作为限定条件使用，防止同名地点跨城误选。",
+        "parameters": [
+          {
+            "name": "keyword",
+            "in": "query",
+            "required": true,
+            "description": "门店名或地点名",
+            "schema": {
+              "type": "string",
+              "description": "去除首尾空格后 1–100 字符",
+              "minLength": 1,
+              "maxLength": 100
+            }
+          },
+          {
+            "name": "city",
+            "in": "query",
+            "required": true,
+            "description": "城市名或行政区代码",
+            "schema": {
+              "type": "string",
+              "description": "1–100 字符",
+              "minLength": 1,
+              "maxLength": 100
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "description": "页码",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 10,
+              "default": 1
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "description": "每页最多 20 条",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 20,
+              "default": 10
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功；无结果仍为 200、items=[]",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchResponse"
+                },
+                "example": {
+                  "success": true,
+                  "data": {
+                    "query_id": "geo-query-example-store",
+                    "expires_at": "2026-10-23T06:30:00Z",
+                    "keyword": "示例门店",
+                    "city": "杭州",
+                    "page": 1,
+                    "page_size": 10,
+                    "has_more": false,
+                    "items": [
+                      {
+                        "poi_id": "SYNTHETIC_STORE_001",
+                        "name": "示例门店（合成测试数据）",
+                        "address": "示例地址，不代表真实门店",
+                        "location": {
+                          "lng": 120.1,
+                          "lat": 30.2,
+                          "coordinate_system": "GCJ-02"
+                        },
+                        "type_code": null,
+                        "category": "other",
+                        "distance_m": null,
+                        "source": {
+                          "provider": "amap",
+                          "queried_at": "2026-10-23T06:00:00Z",
+                          "verification_scope": "provider_record_only",
+                          "live": true
+                        }
+                      }
+                    ],
+                    "limitations": [
+                      "地图地点记录不代表实时营业或官方认证。",
+                      "周边地点不证明客流、客群构成、购买意愿或学校合作关系。"
+                    ]
+                  },
+                  "error": null
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "GEO_INVALID_ARGUMENT：参数或引用结构不合法",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "GEO_RATE_LIMITED：应用限流或供应商配额限制；可返回 Retry-After",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "GEO_UPSTREAM_ERROR：供应商连接或响应异常",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "GEO_NOT_CONFIGURED / GEO_PROVIDER_AUTH_FAILED：配置缺失或凭证无效；不暴露凭证",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "GEO_TIMEOUT：供应商请求超时",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/geo/nearby": {
+      "get": {
+        "tags": [
+          "Geo"
+        ],
+        "operationId": "searchNearbyPlaces",
+        "summary": "查询指定坐标周边地点",
+        "description": "接收 GCJ-02 坐标，以米为半径单位。category 是项目枚举，由服务端映射高德分类，不由 LLM 拼造分类码。只查询，不修改任务。",
+        "parameters": [
+          {
+            "name": "lng",
+            "in": "query",
+            "required": true,
+            "description": "经度；GCJ-02",
+            "schema": {
+              "type": "number",
+              "minimum": -180,
+              "maximum": 180
+            }
+          },
+          {
+            "name": "lat",
+            "in": "query",
+            "required": true,
+            "description": "纬度；GCJ-02",
+            "schema": {
+              "type": "number",
+              "minimum": -90,
+              "maximum": 90
+            }
+          },
+          {
+            "name": "radius",
+            "in": "query",
+            "required": false,
+            "description": "半径（米）",
+            "schema": {
+              "type": "integer",
+              "minimum": 100,
+              "maximum": 5000,
+              "default": 1500
+            }
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "required": true,
+            "description": "学校、办公楼、商场、住宅、交通站点",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "school",
+                "office",
+                "mall",
+                "residential",
+                "transit"
+              ]
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "description": "页码",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 10,
+              "default": 1
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "description": "每页结果数",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 20,
+              "default": 10
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功；无结果仍为 200、items=[]",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NearbyResponse"
+                },
+                "example": {
+                  "success": true,
+                  "data": {
+                    "query_id": "geo-query-example-school",
+                    "expires_at": "2026-10-23T06:30:00Z",
+                    "center": {
+                      "lng": 120.1,
+                      "lat": 30.2,
+                      "coordinate_system": "GCJ-02"
+                    },
+                    "radius_m": 1500,
+                    "category": "school",
+                    "page": 1,
+                    "page_size": 10,
+                    "has_more": false,
+                    "items": [
+                      {
+                        "poi_id": "SYNTHETIC_SCHOOL_001",
+                        "name": "示例学校（合成测试数据）",
+                        "address": "示例地址，不代表真实学校",
+                        "location": {
+                          "lng": 120.101,
+                          "lat": 30.201,
+                          "coordinate_system": "GCJ-02"
+                        },
+                        "type_code": null,
+                        "category": "school",
+                        "distance_m": 150,
+                        "source": {
+                          "provider": "amap",
+                          "queried_at": "2026-10-23T06:00:00Z",
+                          "verification_scope": "provider_record_only",
+                          "live": true
+                        }
+                      }
+                    ],
+                    "limitations": [
+                      "地图地点记录不代表实时营业或官方认证。",
+                      "周边地点不证明客流、客群构成、购买意愿或学校合作关系。"
+                    ]
+                  },
+                  "error": null
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "GEO_INVALID_ARGUMENT：参数或引用结构不合法",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "GEO_RATE_LIMITED：应用限流或供应商配额限制；可返回 Retry-After",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "GEO_UPSTREAM_ERROR：供应商连接或响应异常",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "GEO_NOT_CONFIGURED / GEO_PROVIDER_AUTH_FAILED：配置缺失或凭证无效；不暴露凭证",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "GEO_TIMEOUT：供应商请求超时",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/geo/context": {
+      "post": {
+        "tags": [
+          "Geo"
+        ],
+        "operationId": "createGeoContext",
+        "summary": "把用户选择的门店和周边地点转成服务端可信引用",
+        "description": "只提交 query_id/poi_id，不提交自报名称、坐标、source 或 verified。服务端在当前访问会话内查找查询快照，确认各引用存在且有效。nearby_refs 最多 10 项、不得重复，必须来自以所选门店为中心的有效周边查询。本接口创建地理上下文，不修改营销任务或其 revision；保存到任务使用现有 understand/continue。",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateContextRequest"
+              },
+              "example": {
+                "store_ref": {
+                  "query_id": "geo-query-example-store",
+                  "poi_id": "SYNTHETIC_STORE_001"
+                },
+                "nearby_refs": [
+                  {
+                    "query_id": "geo-query-example-school",
+                    "poi_id": "SYNTHETIC_SCHOOL_001"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "地理上下文创建成功，仍未写入营销任务",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateContextResponse"
+                },
+                "example": {
+                  "success": true,
+                  "data": {
+                    "geo_context_id": "geo-context-example-001",
+                    "expires_at": "2026-10-23T06:30:00Z",
+                    "store": {
+                      "poi_id": "SYNTHETIC_STORE_001",
+                      "name": "示例门店（合成测试数据）",
+                      "address": "示例地址，不代表真实门店",
+                      "location": {
+                        "lng": 120.1,
+                        "lat": 30.2,
+                        "coordinate_system": "GCJ-02"
+                      },
+                      "type_code": null,
+                      "category": "other",
+                      "distance_m": null,
+                      "source": {
+                        "provider": "amap",
+                        "queried_at": "2026-10-23T06:00:00Z",
+                        "verification_scope": "provider_record_only",
+                        "live": true
+                      }
+                    },
+                    "nearby_places": [
+                      {
+                        "poi_id": "SYNTHETIC_SCHOOL_001",
+                        "name": "示例学校（合成测试数据）",
+                        "address": "示例地址，不代表真实学校",
+                        "location": {
+                          "lng": 120.101,
+                          "lat": 30.201,
+                          "coordinate_system": "GCJ-02"
+                        },
+                        "type_code": null,
+                        "category": "school",
+                        "distance_m": 150,
+                        "source": {
+                          "provider": "amap",
+                          "queried_at": "2026-10-23T06:00:00Z",
+                          "verification_scope": "provider_record_only",
+                          "live": true
+                        }
+                      }
+                    ],
+                    "selection_source": "user_selection",
+                    "selected_at": "2026-10-23T06:00:00Z",
+                    "limitations": [
+                      "地图地点记录不代表实时营业或官方认证。",
+                      "周边地点不证明客流、客群构成、购买意愿或学校合作关系。"
+                    ]
+                  },
+                  "error": null
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "GEO_INVALID_ARGUMENT：结构无效或重复引用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "GEO_REFERENCE_NOT_FOUND：引用不存在、不属于当前访问会话或不在所引用快照中",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "GEO_SELECTION_MISMATCH：周边结果不属于该门店中心",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "GEO_CONTEXT_EXPIRED：查询快照已过期，需重新查询",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "data": null,
+                  "error": {
+                    "code": "GEO_CONTEXT_EXPIRED",
+                    "message": "地点选择已过期，请重新查询并选择。",
+                    "retryable": false
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Location": {
+        "type": "object",
+        "properties": {
+          "lng": {
+            "type": "number",
+            "minimum": -180,
+            "maximum": 180
+          },
+          "lat": {
+            "type": "number",
+            "minimum": -90,
+            "maximum": 90
+          },
+          "coordinate_system": {
+            "type": "string",
+            "const": "GCJ-02"
+          }
+        },
+        "required": [
+          "lng",
+          "lat",
+          "coordinate_system"
+        ],
+        "additionalProperties": false
+      },
+      "Source": {
+        "type": "object",
+        "properties": {
+          "provider": {
+            "type": "string",
+            "const": "amap"
+          },
+          "queried_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "verification_scope": {
+            "type": "string",
+            "const": "provider_record_only"
+          },
+          "live": {
+            "type": "boolean",
+            "const": true
+          }
+        },
+        "required": [
+          "provider",
+          "queried_at",
+          "verification_scope",
+          "live"
+        ],
+        "additionalProperties": false
+      },
+      "Poi": {
+        "type": "object",
+        "properties": {
+          "poi_id": {
+            "type": "string",
+            "description": "高德实际返回的地点 ID，不伪造",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "name": {
+            "type": "string",
+            "description": "地点名称",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "address": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "location": {
+            "$ref": "#/components/schemas/Location"
+          },
+          "type_code": {
+            "anyOf": [
+              {
+                "type": "string",
+                "description": "供应商分类码",
+                "minLength": 1,
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "school",
+              "office",
+              "mall",
+              "residential",
+              "transit",
+              "other"
+            ]
+          },
+          "distance_m": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0,
+                "description": "仅 nearby 返回的直线距离；非步行距离。搜索或无法取得时为 null。"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "source": {
+            "$ref": "#/components/schemas/Source"
+          }
+        },
+        "required": [
+          "poi_id",
+          "name",
+          "address",
+          "location",
+          "type_code",
+          "category",
+          "distance_m",
+          "source"
+        ],
+        "additionalProperties": false
+      },
+      "Error": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "项目错误码",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "message": {
+            "type": "string",
+            "description": "可展示的脱敏错误信息",
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "retryable": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "code",
+          "message",
+          "retryable"
+        ],
+        "additionalProperties": false
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "const": false
+          },
+          "data": {
+            "type": "null"
+          },
+          "error": {
+            "$ref": "#/components/schemas/Error"
+          }
+        },
+        "required": [
+          "success",
+          "data",
+          "error"
+        ],
+        "additionalProperties": false
+      },
+      "SearchData": {
+        "type": "object",
+        "properties": {
+          "query_id": {
+            "type": "string",
+            "description": "本服务生成的查询快照 ID；不是高德请求 ID",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "keyword": {
+            "type": "string",
+            "description": "规范化搜索词",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "city": {
+            "type": "string",
+            "description": "城市名称或行政区代码",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10
+          },
+          "page_size": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 20
+          },
+          "has_more": {
+            "type": "boolean",
+            "description": "仅在供应商可判断时表示仍有下一页；不得为得到完整地点清单不断翻页。"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Poi"
+            },
+            "maxItems": 20
+          },
+          "limitations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 10
+          }
+        },
+        "required": [
+          "query_id",
+          "expires_at",
+          "keyword",
+          "city",
+          "page",
+          "page_size",
+          "has_more",
+          "items",
+          "limitations"
+        ],
+        "additionalProperties": false
+      },
+      "NearbyData": {
+        "type": "object",
+        "properties": {
+          "query_id": {
+            "type": "string",
+            "description": "服务端周边查询快照 ID",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "center": {
+            "$ref": "#/components/schemas/Location"
+          },
+          "radius_m": {
+            "type": "integer",
+            "minimum": 100,
+            "maximum": 5000
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "school",
+              "office",
+              "mall",
+              "residential",
+              "transit"
+            ]
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10
+          },
+          "page_size": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 20
+          },
+          "has_more": {
+            "type": "boolean"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Poi"
+            },
+            "maxItems": 20
+          },
+          "limitations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 10
+          }
+        },
+        "required": [
+          "query_id",
+          "expires_at",
+          "center",
+          "radius_m",
+          "category",
+          "page",
+          "page_size",
+          "has_more",
+          "items",
+          "limitations"
+        ],
+        "additionalProperties": false
+      },
+      "PoiReference": {
+        "type": "object",
+        "properties": {
+          "query_id": {
+            "type": "string",
+            "description": "有效查询快照 ID",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "poi_id": {
+            "type": "string",
+            "description": "该快照中的实际地点 ID",
+            "minLength": 1,
+            "maxLength": 100
+          }
+        },
+        "required": [
+          "query_id",
+          "poi_id"
+        ],
+        "additionalProperties": false
+      },
+      "CreateContextRequest": {
+        "type": "object",
+        "properties": {
+          "store_ref": {
+            "$ref": "#/components/schemas/PoiReference"
+          },
+          "nearby_refs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PoiReference"
+            },
+            "maxItems": 10
+          }
+        },
+        "required": [
+          "store_ref",
+          "nearby_refs"
+        ],
+        "additionalProperties": false
+      },
+      "GeoContext": {
+        "type": "object",
+        "properties": {
+          "geo_context_id": {
+            "type": "string",
+            "description": "服务端生成的地理上下文引用 ID",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "store": {
+            "$ref": "#/components/schemas/Poi"
+          },
+          "nearby_places": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Poi"
+            },
+            "maxItems": 10
+          },
+          "selection_source": {
+            "type": "string",
+            "const": "user_selection"
+          },
+          "selected_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "limitations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 10
+          }
+        },
+        "required": [
+          "geo_context_id",
+          "expires_at",
+          "store",
+          "nearby_places",
+          "selection_source",
+          "selected_at",
+          "limitations"
+        ],
+        "additionalProperties": false
+      },
+      "SearchResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "const": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/SearchData"
+          },
+          "error": {
+            "type": "null"
+          }
+        },
+        "required": [
+          "success",
+          "data",
+          "error"
+        ],
+        "additionalProperties": false
+      },
+      "NearbyResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "const": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/NearbyData"
+          },
+          "error": {
+            "type": "null"
+          }
+        },
+        "required": [
+          "success",
+          "data",
+          "error"
+        ],
+        "additionalProperties": false
+      },
+      "CreateContextResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "const": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/GeoContext"
+          },
+          "error": {
+            "type": "null"
+          }
+        },
+        "required": [
+          "success",
+          "data",
+          "error"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "x-project-status": {
+    "status": "PROPOSED_NOT_IMPLEMENTED",
+    "repository_not_inspected": true,
+    "not_a_real_response_snapshot": true,
+    "example_only": true,
+    "contract_owner": "A 后端",
+    "integration_requires_frontend": true
+  },
+  "x-credentials": {
+    "frontend": {
+      "suggested_config_name": "AMAP_JS_API_KEY",
+      "purpose": "网页地图 JS API Key，按平台规则配置域名限制；它是浏览器侧标识，不能当作后端秘密",
+      "delivery": "由前端开发环境配置或受控公开运行时配置提供，不硬编码真实值"
+    },
+    "server": [
+      {
+        "suggested_env_name": "AMAP_WEB_SERVICE_KEY",
+        "purpose": "Python 后端调用地点搜索；不得交给浏览器、LLM 或进入 Git"
+      },
+      {
+        "suggested_env_name": "AMAP_JS_SECURITY_CODE",
+        "purpose": "JS 安全密钥；正式部署按高德服务端代理方案配置，不通过公开配置接口返回"
+      }
+    ],
+    "notes": [
+      "上述是建议的新配置名，不声称当前程序已读取。",
+      "JS SDK 服务代理仅实现高德文档所需的受限路径，不能做任意 URL 转发。",
+      "地图调用费用和配额独立于比赛 LLM token。",
+      "不索取工作人员浏览器实时定位；本轮只使用其主动选择的门店位置。"
+    ]
+  },
+  "x-existing-chat-integration": {
+    "status": "ADDITIVE_PROPOSAL_REQUIRES_ALIGNMENT_WITH_SCENARIO_INPUTS",
+    "semantics": [
+      "在 scenario_inputs.store 新增可选 geo_context_id，不改动现有 envelope 或 understanding/interpretation 字段。",
+      "首次创建用 POST /api/agent/understand；已有任务用 POST /api/agent/continue，并携带该任务实际 expected_revision。",
+      "前端不把地图地点拼成已核实产品事实，不将学校选择写成顾客已确认受众。",
+      "服务端校验 geo_context_id 仍有效且属于当前访问会话，再从服务端快照解析地点；拒绝客户端自报的地图来源或 verified 标记。",
+      "写入任务时将规范化地点及来源快照复制到任务，保留用户输入的 location_text；如两者冲突须提示确认或要求显式替换，不能静默覆盖。",
+      "此后待查询引用过期不使任务中已保存的地点消失；快照须保留 queried_at 和时效限制。",
+      "没有 geo_context_id 时，旧的手填门店流程仍可使用；未提交时保留旧值，显式清空按现有 clear_fields 白名单规则。",
+      "地点上下文实质变化沿用现有策略失效及 revision 逻辑；不能据此无条件删除仍适用的产品事实。",
+      "地图来源保持 provider_record_only，不升级为产品事实 supported；进入策略和 handoff 但不虚构客流、购买力或合作关系。"
+    ],
+    "understand_request_example": {
+      "source": "direct",
+      "user_input": "想围绕选中的门店周边做一组推广。",
+      "product_query": "HUAWEI MateBook X Pro 酷睿 Ultra 微绒典藏版",
+      "platform": "小红书",
+      "scenario_inputs": {
+        "store": {
+          "geo_context_id": "geo-context-example-001"
+        }
+      }
+    },
+    "continue_request_example": {
+      "task_id": "task-example-only",
+      "expected_revision": 7,
+      "user_input": "围绕刚选中的学校探索校园主题，具体受众还需要确认。",
+      "scenario_inputs": {
+        "store": {
+          "geo_context_id": "geo-context-example-001"
+        }
+      }
+    },
+    "clear_request_example": {
+      "task_id": "task-example-only",
+      "expected_revision": 8,
+      "user_input": "这次不参考门店周边地点。",
+      "clear_fields": [
+        "scenario_inputs.store.geo_context_id"
+      ]
+    },
+    "clear_semantics": "clear_fields 的嵌套白名单尚需在本轮后端实现中确认；清除该引用时同时清除派生地图快照，保留独立手填地址。示例 7/8 仅示意，实际必须使用服务端版本。"
+  },
+  "x-runtime-rules": {
+    "query_snapshot_ttl_seconds": 1800,
+    "geo_context_attachment_ttl_seconds": 1800,
+    "storage": "复赛先使用当前服务进程内存；不要求新增云数据库。服务重启后未附着引用及现有内存任务按实际实现失效。",
+    "isolation": "查询快照和地理上下文绑定访问会话，复用已有任务所有权机制；若目前没有，使用服务端管理的临时 HttpOnly 会话 cookie。query_id/geo_context_id 不是授权凭证，不能做全局可读公开 ID。",
+    "coordinate_system": "统一 GCJ-02，顺序 lng,lat；不得把 WGS-84 或 BD-09 直接当作 GCJ-02。",
+    "provider_calls": "仅点击搜索/周边查询时发起；门店文字输入不应每个按键请求。后端限时、限流、严格校验参数、日志脱敏；无任意 URL 参数。",
+    "cache": "本契约的临时快照仅为当前选择与溯源使用，具体缓存/保留规则按地图平台许可配置，不建立地图全量数据库。",
+    "distances": "米，直线距离；不作为步行距离或到店耗时。",
+    "failure": "地图不可用时清晰提示并保留手填和对话；不能用示意点替代真实查询而不标识。",
+    "frontend_requests": "同源请求；若分端口开发，限定具体 CORS 来源并按需携带 cookie，禁止直接 file:// 打开。",
+    "visual_attribution": "保留地图 SDK 原有高德标识及版权信息。"
+  },
+  "x-frontend-requirements": [
+    {
+      "id": "F1",
+      "item": "地图容器",
+      "detail": "接入高德 JS API 2.0，显示/缩放/平移，处理加载失败。"
+    },
+    {
+      "id": "F2",
+      "item": "门店搜索",
+      "detail": "城市输入或选择、关键词输入、搜索按钮、候选列表、确认门店；地图与列表联动。"
+    },
+    {
+      "id": "F3",
+      "item": "周边查询",
+      "detail": "类别 school/office/mall/residential/transit，半径默认 1500 米；绘制门店中心和周边标记。"
+    },
+    {
+      "id": "F4",
+      "item": "地点选择",
+      "detail": "明确所选门店和周边地点；点击“围绕这里策划”调用 context，再调用 understand 或 continue。"
+    },
+    {
+      "id": "F5",
+      "item": "聊天接入",
+      "detail": "使用真实 task_id 和最新 revision，渲染现有文本及后续卡片；选择学校不自动确认学生客群。"
+    },
+    {
+      "id": "F6",
+      "item": "异步与错误",
+      "detail": "loading/空结果/限流/超时/引用过期/版本冲突；忽略旧搜索回包，不把旧地点附着到新门店。"
+    },
+    {
+      "id": "F7",
+      "item": "模拟开发",
+      "detail": "可用本文件 example 并行开发，明确示例标识，最终改为真实接口后才报告联调通过。"
+    }
+  ],
+  "x-work-division": [
+    {
+      "owner": "A（你，后端）",
+      "deliverables": [
+        "Geo 服务封装、2 个 GET 查询接口、1 个 POST context 接口",
+        "查询结果及用户选择的临时快照、访问会话隔离、参数与来源校验",
+        "understand/continue 扩展、任务/策略/handoff 传递、必要失效处理",
+        "环境检查、错误脱敏、接口测试及文档"
+      ]
+    },
+    {
+      "owner": "前端负责人",
+      "deliverables": [
+        "高德地图加载及标记",
+        "门店搜索、候选确认、周边分类和半径、列表地图联动",
+        "选中地点进入聊天，管理 task_id/revision 和错误状态",
+        "前端环境配置、SDK 加载/公开 JS Key、对接受限安全代理"
+      ]
+    },
+    {
+      "owner": "第三位队友（产品与联调）",
+      "deliverables": [
+        "整理演示门店及场景，明确实际门店是否查得到",
+        "记录真实查询结果、失败分支及其限制",
+        "按同一任务验收地图→追问→策略→handoff",
+        "检查 demo 不把合成地点或地图记录冒充产品事实、客流或官方合作"
+      ]
+    }
+  ],
+  "x-implementation-order": [
+    "先核对 A/B 当前代码与分支，确认 scenario_inputs 的正式结构；前后端共享本文件并约定契约版本。",
+    "前端用明确标记的合成 example 开发地图交互，后端并行实现查询及 context。",
+    "联调 search→nearby→context→understand/continue，使用实际返回引用和 revision。",
+    "验证地点进入真实追问、策略和 handoff，保留用户确认步骤。",
+    "验证空结果、无配置、限流、引用过期、跨会话与修改门店；通过后记录 demo。"
+  ],
+  "x-acceptance-checklist": [
+    "真实地图加载成功且保留来源标识；实际门店通过搜索确认。",
+    "周边地点均来自真实查询；列表与地图一致，来源和时间可追溯。",
+    "改变门店后旧周边结果不能被静默选入；旧请求不能覆盖新 UI。",
+    "context 使用服务端保存的地点，伪造 poi_id/客户端来源不能被信任。",
+    "地点选择在同一实际任务中进入 Agent 追问和策略，而非仅显示地图。",
+    "用户更换地点使既有策略按现有规则失效；旧 revision 被拒绝。",
+    "地图故障可手填继续；空结果不伪造点位；密钥不出现在日志或生成内容。",
+    "整体测试报告区分离线合成验证、真实地图查询、真实 LLM 调用和 UI 端到端联调。"
+  ],
+  "x-example-fixtures": {
+    "search": {
+      "success": true,
+      "data": {
+        "query_id": "geo-query-example-store",
+        "expires_at": "2026-10-23T06:30:00Z",
+        "keyword": "示例门店",
+        "city": "杭州",
+        "page": 1,
+        "page_size": 10,
+        "has_more": false,
+        "items": [
+          {
+            "poi_id": "SYNTHETIC_STORE_001",
+            "name": "示例门店（合成测试数据）",
+            "address": "示例地址，不代表真实门店",
+            "location": {
+              "lng": 120.1,
+              "lat": 30.2,
+              "coordinate_system": "GCJ-02"
+            },
+            "type_code": null,
+            "category": "other",
+            "distance_m": null,
+            "source": {
+              "provider": "amap",
+              "queried_at": "2026-10-23T06:00:00Z",
+              "verification_scope": "provider_record_only",
+              "live": true
+            }
+          }
+        ],
+        "limitations": [
+          "地图地点记录不代表实时营业或官方认证。",
+          "周边地点不证明客流、客群构成、购买意愿或学校合作关系。"
+        ]
+      },
+      "error": null
+    },
+    "nearby": {
+      "success": true,
+      "data": {
+        "query_id": "geo-query-example-school",
+        "expires_at": "2026-10-23T06:30:00Z",
+        "center": {
+          "lng": 120.1,
+          "lat": 30.2,
+          "coordinate_system": "GCJ-02"
+        },
+        "radius_m": 1500,
+        "category": "school",
+        "page": 1,
+        "page_size": 10,
+        "has_more": false,
+        "items": [
+          {
+            "poi_id": "SYNTHETIC_SCHOOL_001",
+            "name": "示例学校（合成测试数据）",
+            "address": "示例地址，不代表真实学校",
+            "location": {
+              "lng": 120.101,
+              "lat": 30.201,
+              "coordinate_system": "GCJ-02"
+            },
+            "type_code": null,
+            "category": "school",
+            "distance_m": 150,
+            "source": {
+              "provider": "amap",
+              "queried_at": "2026-10-23T06:00:00Z",
+              "verification_scope": "provider_record_only",
+              "live": true
+            }
+          }
+        ],
+        "limitations": [
+          "地图地点记录不代表实时营业或官方认证。",
+          "周边地点不证明客流、客群构成、购买意愿或学校合作关系。"
+        ]
+      },
+      "error": null
+    },
+    "context_request": {
+      "store_ref": {
+        "query_id": "geo-query-example-store",
+        "poi_id": "SYNTHETIC_STORE_001"
+      },
+      "nearby_refs": [
+        {
+          "query_id": "geo-query-example-school",
+          "poi_id": "SYNTHETIC_SCHOOL_001"
+        }
+      ]
+    },
+    "context": {
+      "success": true,
+      "data": {
+        "geo_context_id": "geo-context-example-001",
+        "expires_at": "2026-10-23T06:30:00Z",
+        "store": {
+          "poi_id": "SYNTHETIC_STORE_001",
+          "name": "示例门店（合成测试数据）",
+          "address": "示例地址，不代表真实门店",
+          "location": {
+            "lng": 120.1,
+            "lat": 30.2,
+            "coordinate_system": "GCJ-02"
+          },
+          "type_code": null,
+          "category": "other",
+          "distance_m": null,
+          "source": {
+            "provider": "amap",
+            "queried_at": "2026-10-23T06:00:00Z",
+            "verification_scope": "provider_record_only",
+            "live": true
+          }
+        },
+        "nearby_places": [
+          {
+            "poi_id": "SYNTHETIC_SCHOOL_001",
+            "name": "示例学校（合成测试数据）",
+            "address": "示例地址，不代表真实学校",
+            "location": {
+              "lng": 120.101,
+              "lat": 30.201,
+              "coordinate_system": "GCJ-02"
+            },
+            "type_code": null,
+            "category": "school",
+            "distance_m": 150,
+            "source": {
+              "provider": "amap",
+              "queried_at": "2026-10-23T06:00:00Z",
+              "verification_scope": "provider_record_only",
+              "live": true
+            }
+          }
+        ],
+        "selection_source": "user_selection",
+        "selected_at": "2026-10-23T06:00:00Z",
+        "limitations": [
+          "地图地点记录不代表实时营业或官方认证。",
+          "周边地点不证明客流、客群构成、购买意愿或学校合作关系。"
+        ]
+      },
+      "error": null
+    },
+    "empty_search": {
+      "success": true,
+      "data": {
+        "query_id": "geo-query-example-empty",
+        "expires_at": "2026-10-23T06:30:00Z",
+        "keyword": "示例无结果",
+        "city": "杭州",
+        "page": 1,
+        "page_size": 10,
+        "has_more": false,
+        "items": [],
+        "limitations": [
+          "地图地点记录不代表实时营业或官方认证。",
+          "周边地点不证明客流、客群构成、购买意愿或学校合作关系。"
+        ]
+      },
+      "error": null
+    },
+    "error": {
+      "success": false,
+      "data": null,
+      "error": {
+        "code": "GEO_CONTEXT_EXPIRED",
+        "message": "地点选择已过期，请重新查询并选择。",
+        "retryable": false
+      }
+    }
+  },
+  "x-official-references": [
+    {
+      "title": "高德 JS API 2.0 快速上手",
+      "url": "https://developer.amap.com/api/javascript-api-v2/getting-started"
+    },
+    {
+      "title": "高德 JS API 安全密钥",
+      "url": "https://developer.amap.com/api/javascript-api-v2/guide/abc/jscode"
+    },
+    {
+      "title": "高德搜索 POI 2.0",
+      "url": "https://lbs.amap.com/api/webservice/guide/api-advanced/newpoisearch"
+    },
+    {
+      "title": "高德地理编码",
+      "url": "https://lbs.amap.com/api/webservice/guide/api/georegeo"
+    }
+  ]
+}

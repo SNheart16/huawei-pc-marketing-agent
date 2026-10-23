@@ -34,7 +34,7 @@
       }
       const negative = /^(?:请)?(?:不要|不再|不想|不需要|不以|不做|不考虑|不推广|不面向|不是|取消|清空|清除|移除|去掉|先不|暂不)/.test(clause);
       const ids = mentions(clause);
-      const channels = ["微信朋友圈", "小红书", "视频号", "其他平台"].filter(p => clause.includes(p) || (p === "微信朋友圈" && clause.includes("朋友圈")));
+      const channels = ["微信朋友圈", "小红书", "公众号", "门店海报", "其他平台"].filter(p => clause.includes(p) || (p === "微信朋友圈" && clause.includes("朋友圈")));
       if (/不(?:要|再)?(?:指定|选择|确定|推广)(?:任何)?产品|先不选型号|暂不(?:选择|指定)(?:产品|型号)|清空产品|清除产品/.test(clause)) {
         patch.product = ""; patch.productMentions = []; patch.productDeferred = true; lastNegativeField = "product";
       } else if (negative && ids.length) { removedProducts.push(...ids); lastNegativeField = "product"; }
@@ -70,7 +70,11 @@
       if (/不提价格|不写价格|不要价格/.test(clause)) patch.noPrice = true;
       if (/恢复完整长度|不要缩短/.test(clause)) patch.short = false;
       if (/可以提价格/.test(clause)) patch.noPrice = false;
-      if (/改为|改成|换成|取消|清空|清除|不要|不再/.test(clause) && !ids.length && !channels.length && !audience && !explicitAudience && !found.length && !sceneRules.some(([,r]) => r.test(clause)) && !/产品|型号|平台|渠道|受众|人群|场景|目标|价格|缩短/.test(clause)) warnings.push("这项修改超出当前模拟规则，请在需求摘要中确认，或明确指出要修改的字段。");
+      if (/恢复默认语气|语气(?:改)?(?:回)?默认|不用特别语气/.test(clause)) patch.tone = "";
+      if (/简洁|专业|干练|理性/.test(clause) && !negative) patch.tone = "简洁专业";
+      if (/轻松|亲切|活泼|随和/.test(clause) && !negative) patch.tone = "轻松亲切";
+      if (/自然|真诚|朴实|平实/.test(clause) && !negative && !patch.tone) patch.tone = "自然真诚";
+      if (/改为|改成|换成|取消|清空|清除|不要|不再/.test(clause) && !ids.length && !channels.length && !audience && !explicitAudience && !found.length && !sceneRules.some(([,r]) => r.test(clause)) && !/产品|型号|平台|渠道|受众|人群|场景|目标|价格|缩短|语气|简洁|轻松|亲切|自然|真诚/.test(clause)) warnings.push("这项修改超出当前模拟规则，请在需求摘要中确认，或明确指出要修改的字段。");
     }
     const products = [...new Set(allProducts)].filter(id => !removedProducts.includes(id));
     if (products.length) { patch.product = products.length === 1 ? products[0] : ""; patch.productMentions = products; }
@@ -93,7 +97,7 @@
     return { version: 2, events, candidateRound: 0, directionRound: 0, composer: "", editing: null, panel: null };
   }
   function resolve(guide, opportunity, through = guide.events.length) {
-    const c = { opportunity, focus: "", productRequested: false, goal: "", task: opportunity?.task || "seeding", product: "", productDeferred: false, audience: "", scene: "", creative: "", excludedScenes: [], short: false, noPrice: false, fieldStatus: { product: "unset", audience: "unset", platforms: "unset", scene: "unset", creative: "unset", goal: "unset" }, platforms: Array.isArray(guide.defaultPlatforms) ? [...guide.defaultPlatforms] : ["微信朋友圈"], platformSource: "建议默认，可修改", priorities: [], notes: [], recognized: Boolean(opportunity), productMentions: [], productConflict: [], clarification: "" };
+    const c = { opportunity, focus: "", productRequested: false, goal: "", task: opportunity?.task || "seeding", product: "", productDeferred: false, audience: "", scene: "", creative: "", tone: "", excludedScenes: [], short: false, noPrice: false, fieldStatus: { product: "unset", audience: "unset", platforms: "unset", scene: "unset", creative: "unset", goal: "unset", tone: "unset" }, platforms: Array.isArray(guide.defaultPlatforms) ? [...guide.defaultPlatforms] : ["微信朋友圈"], platformSource: "建议默认，可修改", priorities: [], notes: [], recognized: Boolean(opportunity), productMentions: [], productConflict: [], clarification: "" };
     for (const event of guide.events.slice(0, through)) {
       const info = event.kind === "text" ? interpret(event.text) : null;
       const patch = { ...(info?.patch || event.patch || {}) };
@@ -137,24 +141,31 @@
     return "ready";
   }
   function response(c, event, count) {
-    if (c.productConflict?.length) return "首页选择与文字中提到的产品不同，请确认本次讨论型号；确认前不会生成策略。";
-    if (c.clarification) return `这段补充已原样保留。当前模拟规则还不能可靠提取其中的全部修改。${c.clarification}`;
+    if (c.productConflict?.length) return "首页选择与文字里提到的型号不一样，先确认本次讨论哪一款；确认前我不会生成策略。";
+    if (c.clarification) return `这段补充我先原样记下，但模拟规则还不能可靠提取其中的全部修改。${c.clarification}`;
     const read = event?.kind === "text" ? recognize(event.text) : null;
-    const ack = read && !read.recognized ? "这段补充已原样保留。当前模拟规则还不能可靠提取其中的新目标或型号，你可以选择下方方向，也可以继续描述。" : c.audience ? `已记下：面向${c.audience}，${names[c.goal] || "推广目标还待明确"}。` : `当前方向：${names[c.goal] || "先梳理值得尝试的推广方向"}。`;
+    const acks = c.audience
+      ? [`明白，这次面向${c.audience}。`, `了解了，重点是${c.audience}。`]
+      : c.goal
+        ? [`好的，目标先围绕「${names[c.goal]}」。`, `嗯，先按「${names[c.goal]}」来准备。`]
+        : ["收到，我先帮你把想法理清楚。", "好，我们一起捋一捋。"];
+    const toneHit = Boolean(event?.patch?.tone) || Boolean(read?.patch && Object.hasOwn(read.patch, "tone"));
+    const toneAck = toneHit ? (c.tone ? `语气收到，会按「${c.tone}」来写。` : "好，语气恢复默认的自然真诚。") : "";
+    const ack = read && !read.recognized ? "这段我先记下了，不过还不能可靠提取其中的新目标或型号——可以点下面的方向，也可以换个说法告诉我。" : (toneAck || acks[count % acks.length]);
     if (read && !read.recognized) return ack;
     if (!count && c.opportunity) return opportunityIntro(c.opportunity, c);
-    if (!count) return "不必先准备完整方案。可以说一个想解决的问题，或从下方选择一个方向；没有型号和渠道也能先看策略。";
+    if (!count) return "不必先准备好完整方案。说一个想解决的问题，或从下面挑一个方向开始；暂时没有型号和渠道也能先看策略。";
     const questions = {
-      "opportunity-goal": "这条机会的推广目标还未确认。选择当前更希望顾客完成的一件事；也可由模拟规则提出有理由的建议。",
+      "opportunity-goal": "这条机会先聚焦一件事：你希望顾客最后做什么？选一个，或直接说给我听。",
       "opportunity-focus": focusQuestion(c),
-      direction: "先探索下面哪一个方向？这些是供选择的建议，不代表已验证的市场机会。",
-      priority: "你提到了多个目标。这次哪一个更优先？也可以由模拟规则给出建议。",
-      product: c.productMentions.length > 1 ? "你提到了多个型号。先选一个作为本次讨论对象，或暂不指定型号。" : "还没有确定主推型号。下面按演示选题标签列出候选，仅用于讨论；真实性能和适配性需要核验。",
-      ready: "已有信息足以整理第一版策略。不再重复询问已明确的产品和目标；受众、渠道等可随时修改，未确认的条件会保留为待核实项。"
+      direction: "可以从这几个方向里挑一个开始。都是供参考的建议，不代表已验证的市场机会。",
+      priority: "你提到了不止一个目标——这次先做哪一个？也可以让规则给个建议。",
+      product: c.productMentions.length > 1 ? "你提到了多个型号，先选一个作为本次讨论对象；也可以暂不指定。" : "还差一个讨论对象。下面两个候选是按演示选题标签挑的，仅用于讨论；真实性能与适配需要核验。",
+      ready: c.fieldStatus?.tone === "confirmed" ? "信息够了，可以开始比较策略。受众、渠道这些没确认的随时改，会保留为待核实项。" : "信息够了，可以开始比较策略。语气默认自然真诚，想换成简洁专业或轻松亲切现在说一声就行；受众、渠道这些没确认的随时改，会保留为待核实项。"
     };
     const focus = focusOptions(c).find(item => item.id === c.focus);
-    const next = c.opportunity && stage(c) === "ready" ? `围绕「${c.opportunity.title}」，将优先做${focus?.title || names[c.goal]}。${focus?.note || ""}可以先比较策略，不必现在指定产品或渠道；门店条件与产品适配仍待核实。` : questions[stage(c)];
-    return `${ack}${event?.patch?.recommendationReason ? `\n\n规则建议理由：${event.patch.recommendationReason}` : ""}\n\n${next}`;
+    const next = c.opportunity && stage(c) === "ready" ? `围绕「${c.opportunity.title}」，接下来优先${focus?.title || names[c.goal]}。${focus?.note || ""}可以先比较策略，型号和渠道之后再说；门店条件与产品适配仍待核实。` : questions[stage(c)];
+    return `${ack}${event?.patch?.recommendationReason ? `\n\n规则建议的理由：${event.patch.recommendationReason}` : ""}\n\n${next}`;
   }
 
   // Opportunity profiles describe editorial hypotheses, never customer demand or product suitability.

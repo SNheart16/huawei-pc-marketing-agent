@@ -3,9 +3,21 @@
   const D = window.MarketingPrototypeData;
   const KEY = "huawei-marketing-prototype-v1";
   const routes = ["home", "guide", "config", "analysis", "results", "settings", "history", "opportunities"];
-  const platforms = ["微信朋友圈", "小红书", "视频号", "其他平台"];
-  const fresh = () => ({ taskId: `task-${Date.now()}-${Math.random().toString(36).slice(2)}`, scene: "", creative: "", excludedScenes: [], fieldStatus: {}, short: false, noPrice: false, task: "seeding", prompt: "", product: "", platforms: ["微信朋友圈"], audience: "", goal: "", focus: "", tone: "自然真诚", extra: "", opportunity: null, strategyId: "", strategyContext: null, outputContext: null, strategyAdjustment: "", round: 0, adjustment: "", outputs: {}, activePlatform: "微信朋友圈", facts: {}, revision: 0, generationRound: 0, recordId: null });
-  let state = { version: 1, page: "home", draft: fresh(), guide: null, store: { location: "", landmarks: "", audience: "", platforms: ["微信朋友圈"] }, history: [], opportunityExplorer: { month: "", selectedDate: "", mapFilter: "all", selectedPlace: "", selectedOpportunity: "", activeView: "" } };
+  const platforms = ["微信朋友圈", "小红书", "公众号", "门店海报", "其他平台"];
+  // 赛题平台形态规则：标题/篇幅/结构/语气/图片数量/行动引导随平台实质变化。
+  const platformSpecs = {
+    "微信朋友圈": { imageRange: [1, 3], imageLabel: "1-3 张", structure: "短文案、一个核心卖点、咨询或到店引导", poster: false },
+    "小红书": { imageRange: [3, 6], imageLabel: "3-6 张", structure: "口语化标题、短段落、使用场景、话题标签", poster: false },
+    "公众号": { imageRange: [2, 4], imageLabel: "2-4 张", structure: "标题、导语、分段正文、结尾行动引导", poster: false },
+    "视频号": { imageRange: [1, 1], imageLabel: "封面 1 张", structure: "口播脚本与镜头顺序", poster: false },
+    "门店海报": { imageRange: [1, 1], imageLabel: "主视觉 1 张", structure: "主标题、副标题、3 个以内卖点、活动说明", poster: true },
+    "其他平台": { imageRange: [1, 3], imageLabel: "1-3 张", structure: "通用图文草稿", poster: false }
+  };
+  const platformSpec = name => platformSpecs[name] || platformSpecs["其他平台"];
+  const fresh = () => ({ taskId: `task-${Date.now()}-${Math.random().toString(36).slice(2)}`, scene: "", creative: "", excludedScenes: [], fieldStatus: {}, short: false, noPrice: false, task: "seeding", prompt: "", product: "", platforms: ["微信朋友圈"], audience: "", goal: "", focus: "", tone: "自然真诚", extra: "", opportunity: null, strategyId: "", strategyContext: null, outputContext: null, strategyAdjustment: "", round: 0, adjustment: "", outputs: {}, complianceNotes: [], activePlatform: "微信朋友圈", facts: {}, revision: 0, generationRound: 0, recordId: null });
+  let state = { version: 1, page: "home", draft: fresh(), guide: null, store: { location: "", landmarks: "", audience: "", city: "", address: "", lat: "", lng: "", geoSource: "", platforms: ["微信朋友圈"] }, history: [], opportunityExplorer: { month: "", selectedDate: "", mapFilter: "all", selectedPlace: "", selectedOpportunity: "", activeView: "", geo: null } };
+  let lastGuideEvents = null;
+  let homePlatformMenuOpen = false;
   let storageWarning = false;
   try {
     const saved = JSON.parse(localStorage.getItem(KEY));
@@ -17,6 +29,7 @@
       if (!Array.isArray(state.draft.platforms)) state.draft.platforms = ["微信朋友圈"];
       state.draft.platforms = state.draft.platforms.filter(p => platforms.includes(p));
       if (!Array.isArray(state.store.platforms)) state.store.platforms = ["微信朋友圈"];
+      if (state.guide) { delete state.guide.thinking; state.guide.events?.forEach(event => { if (event && typeof event.response !== "string") delete event.response; }); }
     }
   } catch { storageWarning = true; }
   state.homePrompt ??= state.draft.opportunity ? "" : state.draft.prompt;
@@ -26,7 +39,7 @@
   let homeProductQuery = "";
   const $ = (s) => document.querySelector(s);
   const esc = (s = "") => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-  const paths = { "panels-top-left": '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 9v12"/>', "pen-line": '<path d="m16 3 5 5-12 12-6 1 1-6ZM14 5l5 5M12 21h9"/>', "folder-open": '<path d="M3 7V5h6l2 2h9v4M3 11h19l-3 9H3Z"/>', "compass": '<circle cx="12" cy="12" r="9"/><path d="m16 8-2 6-6 2 2-6Z"/>', "settings": '<path d="m9 3-1 3-3 1v4l-2 1 2 2v3l3 1 1 3h6l1-3 3-1v-3l2-2-2-1V7l-3-1-1-3Z"/><circle cx="12" cy="12" r="3"/>', "laptop": '<rect x="4" y="3" width="16" height="13" rx="2"/><path d="m4 16-3 5h22l-3-5"/>', "arrow-up-right": '<path d="M7 17 17 7M7 7h10v10"/>', "arrow-left": '<path d="m10 5-7 7 7 7M3 12h18"/>', "shield-check": '<path d="m12 2 9 4v6c0 5-9 10-9 10S3 17 3 12V6Z"/><path d="m8 12 3 3 5-6"/>', "sparkles": '<path d="m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5ZM20 2v4M18 4h4"/>', "badge-plus": '<rect x="4" y="4" width="16" height="16" rx="4"/><path d="M12 8v8M8 12h8"/>', "map-pin": '<path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/>', "calendar-days": '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4M17 3v4M3 11h18M7 15h3M14 15h3"/>', "check": '<path d="m5 12 4 4L19 6"/>', "copy": '<rect x="8" y="8" width="13" height="13" rx="2"/><path d="M16 8V3H3v13h5"/>', "download": '<path d="M12 3v12m-5-5 5 5 5-5M4 17v4h16v-4"/>', "refresh-cw": '<path d="M21 4v6h-6M3 20v-6h6M4 9a8 8 0 0 1 13-5l4 6M3 14l4 6a8 8 0 0 0 13-5"/>' };
+  const paths = { "panels-top-left": '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 9v12"/>', "pen-line": '<path d="m16 3 5 5-12 12-6 1 1-6ZM14 5l5 5M12 21h9"/>', "folder-open": '<path d="M3 7V5h6l2 2h9v4M3 11h19l-3 9H3Z"/>', "compass": '<circle cx="12" cy="12" r="9"/><path d="m16 8-2 6-6 2 2-6Z"/>', "settings": '<path d="m9 3-1 3-3 1v4l-2 1 2 2v3l3 1 1 3h6l1-3 3-1v-3l2-2-2-1V7l-3-1-1-3Z"/><circle cx="12" cy="12" r="3"/>', "laptop": '<rect x="4" y="3" width="16" height="13" rx="2"/><path d="m4 16-3 5h22l-3-5"/>', "arrow-up-right": '<path d="M7 17 17 7M7 7h10v10"/>', "arrow-left": '<path d="m10 5-7 7 7 7M3 12h18"/>', "shield-check": '<path d="m12 2 9 4v6c0 5-9 10-9 10S3 17 3 12V6Z"/><path d="m8 12 3 3 5-6"/>', "sparkles": '<path d="m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5ZM20 2v4M18 4h4"/>', "badge-plus": '<rect x="4" y="4" width="16" height="16" rx="4"/><path d="M12 8v8M8 12h8"/>', "map-pin": '<path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/>', "calendar-days": '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4M17 3v4M3 11h18M7 15h3M14 15h3"/>', "check": '<path d="m5 12 4 4L19 6"/>', "chevron-down": '<path d="m6 9 6 6 6-6"/>', "copy": '<rect x="8" y="8" width="13" height="13" rx="2"/><path d="M16 8V3H3v13h5"/>', "download": '<path d="M12 3v12m-5-5 5 5 5-5M4 17v4h16v-4"/>', "refresh-cw": '<path d="M21 4v6h-6M3 20v-6h6M4 9a8 8 0 0 1 13-5l4 6M3 14l4 6a8 8 0 0 0 13-5"/>' };
   const icon = name => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[name] || paths["sparkles"]}</svg>`;
   const button = (label, action, cls = "mc-secondary", attrs = "") => `<button type="button" class="${cls}" data-action="${action}" ${attrs}>${label}</button>`;
   const task = () => D.tasks.find(t => t.id === state.draft.task);
@@ -105,39 +118,214 @@
   }
   function opportunityDate(o) { return o?.windowStart || o?.displayStart || ""; }
   function placeTypeLabel(type) { return ({ school: "学校", business: "办公区", shopping: "商圈" })[type] || "其他"; }
+  const opportunityTypeLabel = t => ({ "产品探索": "真实场景", "门店场景": "门店周边" })[t] || t;
+  // ===== 地图接口 provider：三个接口与字段名严格对齐 docs/geo-api-contract-v0.1.json（后端 A v0.1 草案）=====
+  // 对齐约定：坐标统一 GCJ-02；经纬度字段叫 lng/lat；距离单位米；响应 envelope 为 {success, data, error}。
+  const GEO_CATEGORY_LABELS = { school: "学校", office: "办公楼", mall: "商场", residential: "住宅", transit: "交通站点", other: "其他" };
+  const GEO_RADIUS_OPTIONS = [500, 1000, 1500, 2000, 3000, 5000];
+  const GEO_NEARBY_MAX = 10;
+  const GEO_LIMITATIONS_FALLBACK = ["地图地点记录不代表实时营业或官方认证。", "周边距离为直线距离，非步行距离；不代表客流或购买意愿。"];
+  function geoDemoMode() { return typeof location !== "undefined" && /demo-geo/.test(location.search || ""); }
+  function geoQueryString(params) {
+    return Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== "").map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join("&");
+  }
+  class GeoApiError extends Error {
+    constructor(status, code, message, retryable) { super(message); this.name = "GeoApiError"; this.status = status; this.code = code; this.retryable = Boolean(retryable); }
+  }
+  function geoErrorMessage(e) {
+    if (e instanceof GeoApiError) {
+      if (e.code === "GEO_CONTEXT_EXPIRED") return "地点选择已过期，请重新查询并选择。";
+      if (e.code === "GEO_NOT_CONFIGURED" || e.code === "GEO_PROVIDER_AUTH_FAILED") return "地图服务未配置或凭证无效（后端环境变量），可先用演示数据体验。";
+      if (e.code === "GEO_RATE_LIMITED") return "地图查询过于频繁，请稍后重试。";
+      if (e.code === "GEO_TIMEOUT") return "地图服务请求超时，请重试。";
+      return e.message || "地图服务暂时不可用。";
+    }
+    return "网络异常，地图服务暂时不可用。";
+  }
+  async function geoRequest(path, params, { method = "GET", body } = {}) {
+    if (typeof fetch !== "function") throw new GeoApiError(0, "GEO_FETCH_UNAVAILABLE", "当前环境不支持网络请求", true);
+    const qs = method === "GET" ? geoQueryString(params || {}) : "";
+    const res = await fetch(qs ? `${path}?${qs}` : path, method === "GET" ? {} : { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    let payload = null;
+    try { payload = await res.json(); } catch { /* 非 JSON 响应按上游错误处理 */ }
+    if (!res.ok || !payload || payload.success !== true || !payload.data) {
+      const e = payload?.error || {};
+      throw new GeoApiError(res.status, e.code || `HTTP_${res.status}`, e.message || "地图服务暂时不可用", e.retryable);
+    }
+    return payload.data;
+  }
+  function demoExpiry() { return new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(); }
+  function demoGeoSearch(keyword, city) {
+    const D0 = D.demoGeo;
+    return { query_id: "geo-query-demo-store", expires_at: demoExpiry(), keyword: keyword || "华为授权服务中心（城西银泰）", city: city || "杭州", page: 1, page_size: 10, has_more: false, items: [JSON.parse(JSON.stringify(D0.store))], limitations: [...D0.limitations] };
+  }
+  function demoGeoNearby(category, radius) {
+    const D0 = D.demoGeo;
+    return { query_id: `geo-query-demo-${category}`, expires_at: demoExpiry(), center: { ...D0.store.location }, radius_m: radius || 1500, category, page: 1, page_size: 20, has_more: false, items: (D0.nearby[category] || []).map(p => JSON.parse(JSON.stringify(p))), limitations: [...D0.limitations] };
+  }
+  function demoGeoContext(storeRef, nearbyRefs) {
+    const D0 = D.demoGeo;
+    const find = (ref) => ref.query_id === "geo-query-demo-store" ? D0.store : (D0.nearby[ref.query_id.replace("geo-query-demo-", "")] || []).find(p => p.poi_id === ref.poi_id);
+    return {
+      geo_context_id: "geo-context-demo-001", expires_at: demoExpiry(),
+      store: JSON.parse(JSON.stringify(find(storeRef) || D0.store)),
+      nearby_places: (nearbyRefs || []).map(r => find(r)).filter(Boolean).map(p => JSON.parse(JSON.stringify(p))),
+      selection_source: "user_selection", selected_at: new Date().toISOString(), limitations: [...D0.limitations]
+    };
+  }
+  // 演示数据来源：URL 带 ?demo-geo，或用户在周边场景页点了「使用演示数据」（g.demo）
+  function geoApiDemo() { return geoDemoMode() || Boolean(geoState().demo); }
+  async function searchStoresApi({ keyword, city, page = 1 }) {
+    if (geoApiDemo()) return demoGeoSearch(keyword, city);
+    return geoRequest("/api/geo/search", { keyword, city, page, page_size: 10 });
+  }
+  async function fetchNearbyApi({ lng, lat, radius, category, page = 1 }) {
+    if (geoApiDemo()) return demoGeoNearby(category, radius);
+    return geoRequest("/api/geo/nearby", { lng, lat, radius, category, page, page_size: 20 });
+  }
+  async function createGeoContextApi({ storeRef, nearbyRefs }) {
+    if (geoApiDemo()) return demoGeoContext(storeRef, nearbyRefs);
+    return geoRequest("/api/geo/context", {}, { method: "POST", body: { store_ref: storeRef, nearby_refs: nearbyRefs } });
+  }
+  async function geoFetchNearbyCategory(category) {
+    const g = geoState();
+    const store = g.store;
+    if (!store) return;
+    g.nearbyByCat[category] = { status: "loading", error: "", data: null };
+    try {
+      const data = await fetchNearbyApi({ lng: store.location.lng, lat: store.location.lat, radius: g.radius, category });
+      const g1 = geoState();
+      g1.nearbyByCat[category] = { status: "done", error: "", data: { ...data, items: (data.items || []).map(p => ({ ...p, query_id: data.query_id })) } };
+    } catch (e) {
+      const g1 = geoState();
+      g1.nearbyByCat[category] = { status: "error", error: geoErrorMessage(e), data: null };
+    }
+    save(); if (state.page === "opportunities") render();
+  }
+  // 地理上下文进入聊天：写入 draft.geo，随后由 understand/continue 以 scenario_inputs 提交（见契约 x-existing-chat-integration）。
+  function geoEnterChat(ctx, demo) {
+    state.draft.geo = {
+      geo_context_id: ctx.geo_context_id,
+      store: { name: ctx.store?.name || "", address: ctx.store?.address || "" },
+      nearby: (ctx.nearby_places || []).map(p => ({ name: p.name, category: p.category, distance_m: p.distance_m })),
+      limitations: ctx.limitations || [],
+      provider: ctx.store?.source?.provider || "amap",
+      queried_at: ctx.store?.source?.queried_at || "",
+      verification_scope: ctx.store?.source?.verification_scope || "provider_record_only",
+      scenarioInputs: { store: { geo_context_id: ctx.geo_context_id } },
+      mapShot: demo ? D.demoGeo.mapShot : "",
+      mapShotCaption: demo ? D.demoGeo.mapShotCaption : "",
+      demo: Boolean(demo)
+    };
+    const o = opportunityList().find(x => x.id === "local");
+    const nearbyNames = state.draft.geo.nearby.map(p => p.name).join("、");
+    const source = o ? { ...o, evidence: `地点来自地图检索快照（${state.draft.geo.provider}，${state.draft.geo.queried_at}，${state.draft.geo.verification_scope}）：门店「${state.draft.geo.store.name}」${nearbyNames ? `；周边 ${nearbyNames}` : ""}。仅为地点记录，不代表客流、购买意愿或官方认证。`, direction: `${nearbyNames ? `可围绕 ${nearbyNames} 等周边地点探索推广主题` : "可围绕门店所在位置探索推广主题"}（地点为检索快照，实际客群需门店观察确认）。`, unknown: "门店实际客群、客流、购买意愿与门店可提供服务均需核实。" } : null;
+    state.draft.opportunity = source;
+    state.draft.task = source?.task || "seeding";
+    state.draft.prompt = state.homePrompt || source?.direction || "";
+    state.guide = G.create(state.homePrompt, homeProductSeed());
+    state.guide.defaultPlatforms = [...(state.store.platforms.length ? state.store.platforms : ["微信朋友圈"])];
+    navigate("guide");
+    toast(demo ? "已生成演示地理上下文并进入聊天（模拟提交）。" : "地理上下文已生成，已进入聊天任务。");
+  }
+  // 聊天页展示的地理上下文卡片
+  function geoContextCard(draft = state.draft) {
+    const geo = draft?.geo;
+    if (!geo) return "";
+    const nearby = geo.nearby?.length ? geo.nearby.map(p => `${esc(p.name)}（${esc(GEO_CATEGORY_LABELS[p.category] || "其他")}${Number.isFinite(Number(p.distance_m)) ? ` · ${esc(geoDistanceText(p.distance_m))}` : ""}）`).join("、") : "未选周边地点";
+    const shot = geo.mapShot ? `<figure class="mc-geo-shot mc-geo-context-shot"><img src="${esc(geo.mapShot)}" alt="${esc(geo.mapShotCaption || "门店地图截图")}" loading="lazy"><figcaption>${esc(geo.mapShotCaption || "门店地图截图（演示素材）")}</figcaption></figure>` : "";
+    return `<div class="mc-geo-context" data-demo="${geo.demo ? "1" : ""}"><div class="mc-geo-context-head">${icon("map-pin")}<strong>门店地理上下文</strong><span class="mc-tag">${esc(geo.geo_context_id)}${geo.demo ? " · 演示" : ""}</span></div>${shot}<dl class="mc-definition"><dt>门店</dt><dd>${esc(geo.store.name)}${geo.store.address ? ` · ${esc(geo.store.address)}` : ""}</dd><dt>周边地点</dt><dd>${nearby}</dd><dt>来源与时效</dt><dd>${esc(geo.provider)} · ${esc(geo.queried_at)} · ${esc(geo.verification_scope)}；过期后任务内已保存的地点不消失</dd><dt>提交载荷</dt><dd><code>scenario_inputs.store.geo_context_id = "${esc(geo.geo_context_id)}"</code></dd></dl><p class="mc-muted">${(geo.limitations || []).map(x => `· ${esc(x)}`).join(" ")}</p></div>`;
+  }
+  // ===== 周边场景交互状态 =====
+  function freshGeoState() {
+    return { keyword: "", city: "", searchStatus: "idle", searchError: "", searchResult: null, selectedStorePoiId: "", store: null, radius: 1500, activeCategories: ["school", "office", "mall"], nearbyByCat: {}, selectedNearby: [], contextStatus: "idle", contextError: "", geoContext: null, demo: false };
+  }
+  function geoState() { const d = state.opportunityExplorer; if (!d.geo || typeof d.geo !== "object") d.geo = freshGeoState(); return d.geo; }
+  function geoAllNearby(g) { return Object.values(g.nearbyByCat || {}).flatMap(x => (x.data?.items) || []); }
+  function geoContextExpired(g) { return Boolean(g.geoContext?.expires_at && new Date(g.geoContext.expires_at).getTime() < Date.now()); }
+  // 距离格式化：米 → 约 xxx 米 / 约 x.x 公里
+  function geoDistanceText(distance_m) {
+    const d = Number(distance_m);
+    if (!Number.isFinite(d)) return "距离未知";
+    return d < 1000 ? `约 ${Math.round(d / 10) * 10} 米` : `约 ${Math.round(d / 100) / 10} 公里`;
+  }
+  // 地图等比定位（沿用：方位角 + 距离，2.5 公里映射外圈；GCJ-02 相对偏移不受坐标系常量偏移影响）
+  function placePosition(place, store) {
+    const lat1 = +store.lat || 0, lng1 = +store.lng || 0, lat2 = +place.lat || lat1, lng2 = +place.lng || lng1;
+    const dy = (lat2 - lat1) * 111000, dx = (lng2 - lng1) * 111000 * Math.cos(lat1 * Math.PI / 180);
+    const dist = Math.hypot(dx, dy), angle = Math.atan2(dx, dy);
+    const r = Math.min(dist / 2500, 1) * 45;
+    const x = Math.min(Math.max(50 + r * Math.sin(angle), 6), 94), y = Math.min(Math.max(50 - r * Math.cos(angle), 10), 90);
+    return `left:${x.toFixed(1)}%;top:${y.toFixed(1)}%`;
+  }
   const mockPlaces = D.opportunityPlaces || [];
   function opportunityExplorerPage() {
     const d = state.opportunityExplorer || (state.opportunityExplorer = { month: "", selectedDate: "", mapFilter: "all", selectedPlace: "", selectedOpportunity: "", activeView: "" });
     d.activeView = d.activeView || "";
-    const today = new Date(), currentMonth = d.month || monthKey(today), date = monthDate(currentMonth);
+    const today = new Date(), todayKey = `${monthKey(today)}-${String(today.getDate()).padStart(2, "0")}`;
+    // Time nodes are windows, not single days; the calendar shows the whole annual sample calendar.
+    const allDateItems = D.opportunities.filter(o => o.type === "时间节点").map(o => ({ ...o, ...(opportunityState(o) || {}) }));
+    const inWindow = (o, key) => o.windowStart <= key && key <= (o.windowEnd || o.windowStart);
+    // First visit lands on the nearest upcoming window instead of an empty "today".
+    if (!d.activeView && !d.selectedDate) {
+      const upcoming = allDateItems.filter(o => o.windowStart >= todayKey).sort((a, b) => a.windowStart < b.windowStart ? -1 : 1)[0];
+      if (upcoming) d.month = upcoming.windowStart.slice(0, 7);
+    }
+    const currentMonth = d.month || monthKey(today), date = monthDate(currentMonth);
     d.month = currentMonth;
-    const items = opportunityExplorerItems(), dateItems = items.filter(o => o.type === "时间节点");
-    const selectedDate = d.selectedDate || `${currentMonth}-${String(today.getDate()).padStart(2, "0")}`;
+    const items = opportunityExplorerItems(), dateItems = allDateItems.filter(o => o.windowStart.slice(0, 7) === currentMonth);
+    const selectedDate = d.selectedDate || (dateItems.find(o => o.windowStart >= todayKey) || dateItems[0] || { windowStart: todayKey }).windowStart;
     d.selectedDate = selectedDate;
-    const selectedDateItem = dateItems.find(o => opportunityDate(o) === selectedDate) || null;
+    const selectedDateItem = dateItems.find(o => inWindow(o, selectedDate)) || null;
     const firstDay = new Date(date.getFullYear(), date.getMonth(), 1).getDay();
     const days = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
     const cells = Array.from({ length: firstDay + days }, (_, i) => {
       if (i < firstDay) return "<span class=\"mc-calendar-empty\" aria-hidden=\"true\"></span>";
-      const day = i - firstDay + 1, key = `${currentMonth}-${String(day).padStart(2, "0")}`, match = dateItems.find(o => opportunityDate(o) === key);
-      return `<button type=\"button\" class=\"mc-calendar-day ${key === selectedDate ? "is-selected" : ""} ${match ? "has-opportunity" : ""}\" data-action=\"opportunity-date\" data-id=\"${key}\"><span>${day}</span>${match ? `<i>${esc(match.type)}</i>` : ""}</button>`;
+      const day = i - firstDay + 1, key = `${currentMonth}-${String(day).padStart(2, "0")}`, match = dateItems.find(o => o.windowStart === key), rangeOnly = !match && dateItems.some(o => o.windowStart < key && key <= (o.windowEnd || o.windowStart));
+      return `<button type=\"button\" class=\"mc-calendar-day ${key === selectedDate ? "is-selected" : ""} ${match ? "has-opportunity" : ""} ${rangeOnly ? "is-range" : ""}\" data-action=\"opportunity-date\" data-id=\"${key}\"><span>${day}</span>${match ? `<i>${esc(opportunityTypeLabel(match.type))}</i>` : ""}</button>`;
     }).join("");
-    const filter = d.mapFilter || "all", visiblePlaces = mockPlaces.filter(p => filter === "all" || p.type === filter), selectedPlace = visiblePlaces.find(p => p.id === d.selectedPlace) || visiblePlaces[0] || null;
-    const mapMarkers = visiblePlaces.map(p => `<button type=\"button\" class=\"mc-map-marker ${p.id === selectedPlace?.id ? "is-selected" : ""}\" data-action=\"opportunity-place\" data-id=\"${p.id}\" style=\"${p.type === "school" ? "left:31%;top:27%" : p.type === "business" ? "right:18%;top:42%" : "left:67%;bottom:20%"}\"><span>${p.type === "school" ? "学" : p.type === "business" ? "办" : "商"}</span><small>${esc(p.name)}</small></button>`).join("");
-    const dateDetail = selectedDateItem ? `<div class=\"mc-opportunity-detail\"><div><span class=\"mc-tag\">时间节点 · ${esc(selectedDateItem.status)}</span><h3>${esc(selectedDateItem.title)}</h3><p class=\"mc-detail-date\">${esc(selectedDateItem.windowStart)}</p><p>${esc(selectedDateItem.scene)}</p><p><strong>推荐主题：</strong>${esc(selectedDateItem.direction)}</p><p><strong>准备方向：</strong>提前 ${selectedDateItem.preparationDays} 天整理用途、软件与待核实资料。</p><p class=\"mc-muted\">待确认：${esc(selectedDateItem.unknown)}</p></div>${button("围绕这个机会制定推广方案", "opportunity", "mc-primary", `data-id="${esc(selectedDateItem.id)}"`)}</div>` : `<div class=\"mc-opportunity-detail mc-empty-detail\"><h3>这一天没有配置机会</h3><p>可以选择其他日期，或回到机会列表查看当前有效的演示机会。</p></div>`;
-    const placeDetail = selectedPlace ? `<div class=\"mc-opportunity-detail\"><div><span class=\"mc-tag\">${placeTypeLabel(selectedPlace.type)} · 概念地点</span><h3>${esc(selectedPlace.name)}</h3><p>${esc(selectedPlace.theme)}</p><p><strong>相关产品特点：</strong>${esc(selectedPlace.facts)}</p><p class=\"mc-muted\">${esc(selectedPlace.detail)}</p></div>${button("围绕这个场景制定推广方案", "opportunity", "mc-primary", `data-id="local"`)}</div>` : `<div class=\"mc-opportunity-detail mc-empty-detail\"><h3>没有符合条件的地点</h3><p>请选择其他地点类型。</p></div>`;
+    // ===== 概念示意（未走搜索流程时的降级展示）=====
+    const filter = d.mapFilter || "all";
+    const visiblePlaces = mockPlaces.filter(p => filter === "all" || p.type === filter), selectedPlace = visiblePlaces.find(p => p.id === d.selectedPlace) || visiblePlaces[0] || null;
+    const conceptBadge = p => p.type === "school" ? "学" : p.type === "business" ? "办" : "商";
+    const placeChips = visiblePlaces.length ? `<div class="mc-place-chips" role="list">${visiblePlaces.map(p => `<button type="button" role="listitem" class="mc-place-chip ${p.id === selectedPlace?.id ? "is-active" : ""}" data-action="opportunity-place" data-id="${p.id}\"><span class="mc-place-chip-badge ${esc(p.type)}">${conceptBadge(p)}</span><strong>${esc(p.name)}</strong><small>${esc(p.direction || "概念地点")}</small></button>`).join("")}</div>` : "";
+    // ===== 真实流程（契约 v0.1）：搜索门店 → 周边分类/半径 → 选择地点 → 地理上下文进聊天 =====
+    const g = geoState();
+    const geoBadge = p => ({ school: "学", office: "办", mall: "商", residential: "住", transit: "交" })[p.category] || "地";
+    const geoSelectedSet = new Set(g.selectedNearby);
+    const searchPanel = `<div class="mc-geo-search"><div class="mc-geo-search-row"><label class="mc-field"><span>城市</span><input id="mc-geo-city" value="${esc(g.city)}" placeholder="例如：杭州" maxlength="100" autocomplete="off"></label><label class="mc-field mc-geo-search-keyword"><span>门店或地点名称</span><input id="mc-geo-keyword" value="${esc(g.keyword)}" placeholder="例如：华为授权体验店" maxlength="100" autocomplete="off"></label>${button(g.searchStatus === "loading" ? "搜索中…" : "搜索门店", "geo-search", "mc-primary", g.searchStatus === "loading" ? "disabled" : "")}</div><div class="mc-geo-search-tools">${button("使用演示数据", "opportunity-demo-geo", "mc-link")}<span class="mc-muted">只查询、不修改任务；坐标统一 GCJ-02，距离单位米；不获取浏览器实时定位。</span></div>${g.searchStatus === "error" ? `<div class="mc-geo-error" role="alert">${esc(g.searchError)} ${button("重试", "geo-search-retry", "mc-link")}</div>` : ""}</div>`;
+    const candidates = g.searchResult?.items?.length ? `<div class="mc-geo-candidates" role="radiogroup" aria-label="候选门店">${g.searchResult.items.map(p => `<button type="button" role="radio" aria-checked="${p.poi_id === g.selectedStorePoiId}" class="mc-geo-candidate ${p.poi_id === g.selectedStorePoiId ? "is-active" : ""}" data-action="geo-select-store" data-id="${esc(p.poi_id)}"><strong>${esc(p.name)}</strong><span>${esc(p.address || "地址未提供")}</span><small>${esc(p.location.lng)}, ${esc(p.location.lat)}（GCJ-02） · 来源 ${esc(p.source?.provider || "未知")} · 快照 ${esc(g.searchResult.query_id)} · 过期 ${esc(g.searchResult.expires_at || "未知")}</small></button>`).join("")}</div>` : g.searchStatus === "done" ? `<div class="mc-geo-empty">没有找到匹配的门店，请换个关键字或城市。</div>` : "";
+    const storeShot = g.store && g.demo && D.demoGeo.mapShot ? `<figure class="mc-geo-shot"><img src="${esc(D.demoGeo.mapShot)}" alt="${esc(D.demoGeo.mapShotCaption || "门店地图截图")}" loading="lazy"><figcaption>${esc(D.demoGeo.mapShotCaption || "门店地图截图（演示素材）")} · 定位与周边距离以下方演示数据为准</figcaption></figure>` : "";
+    const storeBlock = g.store ? `<div class="mc-geo-store"><span class="mc-tag">已选门店 · ${esc(g.demo ? "演示模拟数据" : "地图检索")}</span><strong>${esc(g.store.name)}</strong><span class="mc-muted">${esc(g.store.address || "")} · ${esc(g.store.location.lng)}, ${esc(g.store.location.lat)}（GCJ-02）</span>${storeShot}</div>` : "";
+    const radiusChips = g.store ? `<div class="mc-map-filters mc-geo-radius" role="group" aria-label="半径">${GEO_RADIUS_OPTIONS.map(r => button(r < 1000 ? `${r} 米` : `${r / 1000} 公里`, "geo-radius", `mc-link ${r === g.radius ? "is-active" : ""}`, `data-id="${r}"`)).join("")}</div>` : "";
+    const categoryChips = g.store ? `<div class="mc-map-filters" role="group" aria-label="周边分类">${Object.entries(GEO_CATEGORY_LABELS).filter(([k]) => k !== "other").map(([value, label]) => { const st = g.nearbyByCat[value]?.status; return button(`${label}${st === "loading" ? "…" : st === "error" ? "（失败）" : ""}`, "geo-category", `mc-link ${g.activeCategories.includes(value) ? "is-active" : ""}`, `data-id="${value}"`); }).join("")}</div>` : "";
+    const nearbyErrors = g.store ? Object.entries(g.nearbyByCat).filter(([, x]) => x.status === "error").map(([cat, x]) => `<div class="mc-geo-error" role="alert">${esc(GEO_CATEGORY_LABELS[cat] || cat)}：${esc(x.error)} ${button("重试", "geo-category-retry", "mc-link", `data-id="${esc(cat)}"`)}</div>`).join("") : "";
+    const allNearby = geoAllNearby(g);
+    const visibleNearby = g.store ? allNearby.filter(p => g.activeCategories.includes(p.category)) : [];
+    const storeGeoForMap = g.store ? { lat: g.store.location.lat, lng: g.store.location.lng } : null;
+    const realMarkers = g.store ? visibleNearby.map(p => `<button type=\"button\" class=\"mc-map-marker ${geoSelectedSet.has(p.poi_id) ? "is-selected" : ""}\" data-action=\"geo-toggle-nearby\" data-id=\"${esc(p.poi_id)}\" style=\"${placePosition({ lat: p.location.lat, lng: p.location.lng }, storeGeoForMap)}\" aria-label=\"${esc(p.name)}\" aria-pressed=\"${geoSelectedSet.has(p.poi_id)}\"><span class=\"mc-cat-${esc(p.category)}\">${geoBadge(p)}</span><small>${esc(p.name)}</small></button>`).join("") : "";
+    const nearbyList = g.store ? `<div class="mc-geo-nearby-head"><strong>周边地点</strong><span class="mc-muted">点选加入策划（最多 ${GEO_NEARBY_MAX} 个）· 距离为直线距离</span></div><div class="mc-place-chips" role="list">${visibleNearby.map(p => `<button type="button" role="listitem" class="mc-place-chip ${geoSelectedSet.has(p.poi_id) ? "is-active" : ""}" data-action="geo-toggle-nearby" data-id="${esc(p.poi_id)}" aria-pressed=\"${geoSelectedSet.has(p.poi_id)}\"><span class="mc-place-chip-badge ${esc(p.category)}">${geoBadge(p)}</span><strong>${esc(p.name)}</strong><small>${geoDistanceText(p.distance_m)} · ${esc(GEO_CATEGORY_LABELS[p.category] || "其他")}</small></button>`).join("") || `<p class="mc-muted">该范围内暂无地点，可调整半径或分类。</p>`}</div>` : "";
+    const contextExpired = g.store && g.geoContext && geoContextExpired(g);
+    const planDisabled = !g.store || g.contextStatus === "loading" || Boolean(g.geoContext && !contextExpired);
+    const planBlock = g.store ? `<div class="mc-geo-plan"><div class="mc-geo-plan-head"><strong>已选 ${g.selectedNearby.length}/${GEO_NEARBY_MAX} 个周边地点</strong><span class="mc-muted">门店与选中地点将作为服务端地理上下文（geo_context_id）进入聊天任务；不会自动推断客流或购买意愿。</span></div>${g.contextStatus === "error" ? `<div class="mc-geo-error" role="alert">${esc(g.contextError)}</div>` : ""}${contextExpired ? `<div class="mc-geo-error" role="alert">地点选择已过期，请重新查询并选择。</div>` : ""}<div class="mc-geo-plan-actions">${button(g.contextStatus === "loading" ? "正在生成地理上下文…" : "围绕这里策划", "geo-plan", "mc-primary", planDisabled ? "disabled" : "")}${g.geoContext ? `<span class="mc-muted">已生成 ${esc(g.geoContext.geo_context_id)}${g.demo ? "（演示）" : ""} · 过期时间 ${esc(g.geoContext.expires_at || "未知")}</span>` : ""}</div></div>` : "";
+    const limitationsNote = g.store ? `<p class="mc-muted mc-geo-limitations">${(Object.values(g.nearbyByCat).map(x => x.data?.limitations).find(l => l?.length) || D.demoGeo.limitations).map(x => `· ${esc(x)}`).join(" ")}</p>` : "";
+    const mapStatus = g.store ? `已选门店：${g.store.name} · 半径 ${g.radius} 米 · ${g.demo ? "演示模拟数据" : "地图检索数据 provider_record_only"}` : "搜索门店后展示真实周边分布；当前为城西银泰门店地图截图（演示素材）";
+    const mapScale = g.store ? `<span class="mc-map-scale">按实际距离等比示意 · 外圈约 2.5 公里</span>` : "";
+    const dateDetail = selectedDateItem ? `<div class=\"mc-opportunity-detail\"><div><span class=\"mc-tag\">时间节点 · ${esc(selectedDateItem.status || "样例排期")}</span><h3>${esc(selectedDateItem.title)}</h3><p class=\"mc-detail-date\">${esc(selectedDateItem.windowStart)}${selectedDateItem.windowEnd && selectedDateItem.windowEnd !== selectedDateItem.windowStart ? ` 至 ${esc(selectedDateItem.windowEnd.slice(5))}` : ""}</p><p>${esc(selectedDateItem.scene)}</p><p><strong>推荐主题：</strong>${esc(selectedDateItem.direction)}</p><p><strong>准备方向：</strong>提前 ${selectedDateItem.preparationDays} 天整理用途、软件与待核实资料。</p><p class=\"mc-muted\">待确认：${esc(selectedDateItem.unknown)}</p></div>${button("围绕这个机会制定推广方案", "opportunity", "mc-primary", `data-id="${esc(selectedDateItem.id)}"`)}</div>` : `<div class=\"mc-opportunity-detail mc-empty-detail\"><h3>这一天没有配置机会</h3><p>可以选择其他日期，或回到机会列表查看当前有效的演示机会。</p></div>`;
+    const placeDetail = selectedPlace ? `<div class=\"mc-opportunity-detail\"><div><span class=\"mc-tag\">${placeTypeLabel(selectedPlace.type)} · 概念地点</span><h3>${esc(selectedPlace.name)}</h3><p class=\"mc-detail-date\">位于门店${esc(selectedPlace.direction)}</p><p><strong>适合聊的话题：</strong>${esc(selectedPlace.theme)}</p><p><strong>相关产品特点：</strong>${esc(selectedPlace.facts)}</p><p class=\"mc-muted\">${esc(selectedPlace.detail)}</p></div>${button("围绕这个场景制定推广方案", "opportunity", "mc-primary", `data-id="local"`)}</div>` : `<div class=\"mc-opportunity-detail mc-empty-detail\"><h3>没有符合条件的地点</h3><p>请选择其他地点类型。</p></div>`;
     const selectedGeneric = !d.activeView && items.find(o => o.id === d.selectedOpportunity && o.type === "产品探索");
-    const genericDetail = selectedGeneric ? `<section class="mc-opportunity-explore-block mc-opportunity-generic-detail" id="mc-opportunity-product-detail"><div class="mc-section-head"><div><h2>${esc(selectedGeneric.title)}</h2><p class="mc-muted">产品与使用场景探索</p></div>${button("收起详情", "opportunity-collapse", "mc-link")}</div><div class="mc-opportunity-detail"><div><p>${esc(selectedGeneric.scene)}</p><p><strong>推荐主题：</strong>${esc(selectedGeneric.direction)}</p><p class="mc-muted">待确认：${esc(selectedGeneric.unknown)}</p></div>${button("围绕这个机会制定推广方案", "opportunity", "mc-primary", `data-id="${esc(selectedGeneric.id)}"`)}</div></section>` : "";
+    const scenarioCards = selectedGeneric ? (selectedGeneric.scenarios || []).map(s => `<button type="button" class="mc-scenario-card" data-action="opportunity-scenario" data-id="${esc(s.id)}"><strong>${esc(s.name)}</strong><span>${esc(s.hook)}</span><em>围绕这个场景生成方案 ${icon("arrow-up-right")}</em></button>`).join("") : "";
+    const genericDetail = selectedGeneric ? `<section class="mc-opportunity-explore-block mc-opportunity-generic-detail" id="mc-opportunity-product-detail"><div class="mc-section-head"><div><h2>${esc(selectedGeneric.title)}</h2><p class="mc-muted">选一个场景，生成更有针对性的推广方案</p></div>${button("收起详情", "opportunity-collapse", "mc-link")}</div><div class="mc-scenario-grid">${scenarioCards}</div><p class="mc-muted">样例场景用于演示选题方向；具体软件适配、配置与价格均需核实。</p></section>` : "";
     // One entrance per opportunity type; keep all eligible records for deep links and date details.
     const cardItems = items.filter((o, index) => items.findIndex(item => item.type === o.type) === index);
     const cards = cardItems.map(o => {
       const isSelected = o.type === "时间节点" ? d.activeView === "date" && opportunityDate(o) === d.selectedDate : o.type === "产品探索" ? selectedGeneric?.id === o.id : d.activeView === "place";
       const action = o.type === "时间节点" ? "opportunity-focus-date" : o.type === "产品探索" ? "opportunity-focus-opportunity" : "opportunity-focus-place";
       const target = o.type === "时间节点" ? "mc-opportunity-date-explorer" : o.type === "产品探索" ? "mc-opportunity-product-detail" : "mc-opportunity-place-explorer";
-      return `<article class=\"mc-opportunity-list-item mc-opportunity-card ${o.type === "时间节点" ? "is-date" : ""} ${isSelected ? "is-selected" : ""}\"><div class=\"mc-opportunity-card-copy\"><span class=\"mc-tag\">${esc(o.type)} · ${esc(o.status)}</span><h3>${esc(o.title)}</h3><p>${esc(o.description)}</p></div>${button(`查看详情 ${icon("arrow-up-right")}`, action, "mc-opportunity-card-action", `data-id="${esc(o.id)}" aria-expanded="${isSelected}" aria-controls="${target}"`)}</article>`;
+      return `<article class=\"mc-opportunity-list-item mc-opportunity-card ${o.type === "时间节点" ? "is-date" : ""} ${isSelected ? "is-selected" : ""}\"><div class=\"mc-opportunity-card-copy\"><span class=\"mc-tag\">${esc(opportunityTypeLabel(o.type))} · ${esc(o.status)}</span><h3>${esc(o.title)}</h3><p>${esc(o.description)}</p></div>${button(`查看详情 ${icon("chevron-down")}`, action, "mc-opportunity-card-action", `data-id="${esc(o.id)}" aria-expanded="${isSelected}" aria-controls="${target}"`)}</article>`;
     }).join("");
-    const dateView = d.activeView === "date" ? `<section class="mc-opportunity-explore-block" id="mc-opportunity-date-explorer"><div class="mc-section-head"><div><h2>时间节点</h2><p class="mc-muted">日历只标记已配置的样例节点，不代表真实活动。</p></div><div class="mc-opportunity-detail-tools"><div class="mc-calendar-nav">${button("上个月", "opportunity-month", "mc-link", 'data-id="prev"')}${button(`${date.getFullYear()} 年 ${date.getMonth() + 1} 月`, "noop", "mc-tag")}${button("下个月", "opportunity-month", "mc-link", 'data-id="next"')}</div>${button("收起详情", "opportunity-collapse", "mc-link")}</div></div><div class="mc-calendar" aria-label="推广机会月历"><div class="mc-calendar-week">${["日", "一", "二", "三", "四", "五", "六"].map(x => `<span>${x}</span>`).join("")}</div><div class="mc-calendar-grid">${cells}</div></div>${dateDetail}</section>` : "";
-    const placeView = d.activeView === "place" ? `<section class="mc-opportunity-explore-block" id="mc-opportunity-place-explorer"><div class="mc-section-head"><div><h2>周边场景</h2><p class="mc-muted">场景示意，非真实地理数据</p></div><div class="mc-opportunity-detail-tools"><div class="mc-map-filters">${[["all", "全部"], ["shopping", "商圈"], ["school", "学校"], ["business", "办公区"]].map(([value, label]) => button(label, "opportunity-map-filter", `mc-link ${filter === value ? "is-active" : ""}`, `data-id="${value}"`)).join("")}</div>${button("收起详情", "opportunity-collapse", "mc-link")}</div></div><div class="mc-concept-map" aria-label="周边场景概念图"><div class="mc-map-road road-a"></div><div class="mc-map-road road-b"></div><div class="mc-map-road road-c"></div><div class="mc-map-ring ring-a"></div><div class="mc-map-ring ring-b"></div><div class="mc-map-store"><span>店</span><small>门店中心</small></div>${mapMarkers}</div>${placeDetail}</section>` : "";
+    const dateView = d.activeView === "date" ? `<section class="mc-opportunity-explore-block" id="mc-opportunity-date-explorer"><div class="mc-section-head"><div><h2>时间节点</h2><p class="mc-muted">每个标记是一段建议窗口（年度样例排期），不代表真实活动；浅色为窗口内的其他日期。</p></div><div class="mc-opportunity-detail-tools"><div class="mc-calendar-nav">${button("上个月", "opportunity-month", "mc-link", 'data-id="prev"')}${button(`${date.getFullYear()} 年 ${date.getMonth() + 1} 月`, "noop", "mc-tag")}${button("下个月", "opportunity-month", "mc-link", 'data-id="next"')}</div>${button("收起详情", "opportunity-collapse", "mc-link")}</div></div><div class="mc-calendar" aria-label="推广机会月历"><div class="mc-calendar-week">${["日", "一", "二", "三", "四", "五", "六"].map(x => `<span>${x}</span>`).join("")}</div><div class="mc-calendar-grid">${cells}</div></div>${dateDetail}</section>` : "";
+    const placeView = d.activeView === "place" ? `<section class="mc-opportunity-explore-block" id="mc-opportunity-place-explorer"><div class="mc-section-head"><div><h2>周边场景</h2><p class="mc-muted">${mapStatus}</p></div><div class="mc-opportunity-detail-tools"><div class="mc-map-filters">${[["all", "全部"], ["shopping", "商圈"], ["school", "学校"], ["business", "办公区"]].map(([value, label]) => button(label, "opportunity-map-filter", `mc-link ${filter === value ? "is-active" : ""}`, `data-id="${value}"`)).join("")}</div>${button("收起详情", "opportunity-collapse", "mc-link")}</div></div>${searchPanel}${candidates}${storeBlock}${g.store ? `${radiusChips}${categoryChips}${nearbyErrors}<div class="mc-concept-map is-real" aria-label="周边分布图"><div class="mc-map-road road-a"></div><div class="mc-map-road road-b"></div><div class="mc-map-road road-c"></div><div class="mc-map-ring ring-a"></div><div class="mc-map-ring ring-b"></div><div class="mc-map-store"><span>店</span><small>${esc(g.store.name)}</small></div>${mapScale}${realMarkers}</div>${nearbyList}${limitationsNote}${planBlock}` : `<p class="mc-muted">当前展示演示门店的地图截图；搜索并选择门店后，这里按真实距离展示周边的学校、办公楼、商场等分布。</p><figure class="mc-geo-shot mc-geo-shot-hero"><img src="${esc(D.demoGeo.mapShot)}" alt="${esc(D.demoGeo.mapShotCaption || "门店地图截图")}" loading="lazy"><figcaption>${esc(D.demoGeo.mapShotCaption || "门店地图截图（演示素材）")} · 点「使用演示数据」体验完整选址流程</figcaption></figure>${placeChips}${placeDetail}`}</section>` : "";
     return `${pageHead("推广机会", "发现值得关注的时间节点、周边场景与产品表达方向。", button("返回首页", "home", "mc-secondary"))}<section class="mc-opportunity-explorer"><div class="mc-opportunity-list"><div class="mc-section-head"><div><h2>探索一个方向</h2><p class="mc-muted">${cardItems.length} 个机会方向 · 选择后查看详情</p></div></div><div class="mc-opportunity-card-grid">${cards}</div></div>${dateView}${placeView}${genericDetail}</section>`;
   }
   function nextOpportunity(items, current, seen = []) {
@@ -227,11 +415,15 @@
     const actionOutput = d.goal === "store" ? "核实门店安排后的联系引导" : d.goal === "consultation" ? "邀请顾客带着具体问题咨询" : d.goal === "needs" ? "帮助顾客整理选购关注点" : d.goal === "awareness" ? "引导顾客继续了解已核实信息" : d.goal === "launch" ? "产品资料来源与待确认项提示" : "按实际需求决定是否进一步了解";
     const outputs = video
       ? ["视频号标题与口播脚本", `${goalOutput}的镜头顺序建议`, actionOutput]
-      : channels.includes("小红书")
-        ? ["小红书标题与正文", `${goalOutput}的封面构图建议`, actionOutput]
-        : channels.includes("微信朋友圈")
-          ? ["朋友圈推广文案", `${goalOutput}的配图构想`, actionOutput]
-          : ["通用推广文案", `${goalOutput}的内容结构建议`, actionOutput];
+      : channels.includes("门店海报")
+        ? ["门店海报主标题、副标题与卖点文案（3 个以内）", "主视觉构图与活动说明建议（不虚构优惠）", actionOutput]
+        : channels.includes("公众号")
+          ? ["公众号标题、导语与分段正文", `${goalOutput}的配图来源与插入位置建议（2-4 张）`, actionOutput]
+          : channels.includes("小红书")
+            ? ["小红书标题与正文", `${goalOutput}的封面构图建议（建议 3-6 张配图）`, actionOutput]
+            : channels.includes("微信朋友圈")
+              ? ["朋友圈推广文案", `${goalOutput}的配图构想（1-3 张）`, actionOutput]
+              : ["通用推广文案", `${goalOutput}的内容结构建议`, actionOutput];
     return { visualKind: kind, visualSrc: `assets/strategy-${kind}.svg`, visualAlt: `概念示意：${v.alt}`, visualLabel: v.label, visualStyle: v.style, expectedOutputs: outputs, expression: s.contentFormat || s.format.split(" · ")[0], narrative: v.narrative, previewTitle, previewNote: ({ scene: "从具体任务呈现场景", editorial: "重点信息与核验来源分层呈现", dialogue: "先提出问题，再给出有依据的回应" })[kind], visualNote: "本地 SVG 概念示意 · 非产品实拍、最终配图或已生成成品" };
   }
   const visualAssets = {
@@ -240,11 +432,30 @@
     dialogue: { src: "assets/result-dialogue.svg", label: "问题解答", alt: "具体选购问题与资料回应的内容概念示意" }
   };
   const mediaKinds = Object.keys(visualAssets);
-  function ensureOutputMedia(output) {
+  // AI 生成时一并产出的备选图（前端模拟：接入真实生成后由生成结果替换）。
+  const candidateAssets = {
+    altScene: { src: "assets/strategy-scene.svg", label: "备选 · 场景视角", alt: "AI 生成备选：使用场景概念示意，非指定型号实拍" },
+    altEditorial: { src: "assets/strategy-editorial.svg", label: "备选 · 图文版式", alt: "AI 生成备选：图文版式概念示意，非指定型号实拍" },
+    altDialogue: { src: "assets/strategy-dialogue.svg", label: "备选 · 问答视角", alt: "AI 生成备选：问答内容概念示意，非指定型号实拍" }
+  };
+  const assetOf = kind => visualAssets[kind] || candidateAssets[kind];
+  // 图片来源为演示占位：接入 ima 知识库后由真实检索结果替换（来源链接、命中资料与授权状态）。
+  const demoImageSource = "演示知识库 · 产品资料图（占位；接入 ima 后替换为真实来源与链接）";
+  const defaultImagePosition = { "封面": "封面（首图）", "场景": "正文第 1 段后", "补充": "正文第 2 段后" };
+  const imageCaption = (platform, label, role) => `${label}概念示意 · ${role}；${platformSpec(platform).structure}`;
+  function fillImageMeta(image, platform) {
+    if (!image) return image;
+    if (!image.source) image.source = demoImageSource;
+    if (!image.caption) image.caption = imageCaption(platform || "其他平台", image.visualLabel || "配图", image.role || "插图");
+    if (!image.position) image.position = defaultImagePosition[image.role] || "随文插图";
+    return image;
+  }
+  function ensureOutputMedia(output, platform = "其他平台") {
     if (!output) return [];
     if (!Array.isArray(output.images) || !output.images.length) {
       output.images = [{ id: "image-1", visualKind: output.visualKind || "scene", visualSrc: output.visualSrc || visualAssets.scene.src, visualLabel: output.visualLabel || visualAssets.scene.label, visualAlt: output.visualAlt || visualAssets.scene.alt, visualHeadline: output.visualHeadline || "", visualSubline: output.visualSubline || "", role: "封面" }];
     }
+    output.images.forEach(image => fillImageMeta(image, platform));
     if (!output.activeImageId || !output.images.some(image => image.id === output.activeImageId)) output.activeImageId = output.images[0].id;
     const image = output.images.find(item => item.id === output.activeImageId) || output.images[0];
     output.visualKind = image.visualKind; output.visualSrc = image.visualSrc; output.visualLabel = image.visualLabel; output.visualAlt = image.visualAlt; output.visualHeadline = image.visualHeadline; output.visualSubline = image.visualSubline;
@@ -255,22 +466,24 @@
     output.activeImageId = image.id;
     output.visualKind = image.visualKind; output.visualSrc = image.visualSrc; output.visualLabel = image.visualLabel; output.visualAlt = image.visualAlt; output.visualHeadline = image.visualHeadline; output.visualSubline = image.visualSubline;
   }
-  function outputImages(output) { return ensureOutputMedia(output); }
+  function outputImages(output) { return ensureOutputMedia(output, state.draft.activePlatform); }
   function setOutputImage(output, kind) {
-    const images = ensureOutputMedia(output), image = images.find(item => item.id === output.activeImageId) || images[0], visual = visualAssets[kind];
+    const images = ensureOutputMedia(output), image = images.find(item => item.id === output.activeImageId) || images[0], visual = assetOf(kind);
     if (!visual) return;
     Object.assign(image, { visualKind: kind, visualSrc: visual.src, visualLabel: visual.label, visualAlt: visual.alt });
     syncOutputImage(output, image); output.imageEdited = true;
   }
-  function makeMultiImage(output) {
-    const images = ensureOutputMedia(output);
+  function makeMultiImage(output, platform = "其他平台") {
+    const images = ensureOutputMedia(output, platform);
     output.imageMode = "multi";
+    if (!output.candidates) output.candidates = Object.keys(candidateAssets);
     if (images.length > 1) return images;
     const first = images[0];
     images.push(...mediaKinds.filter(kind => kind !== first.visualKind).map((kind, index) => {
       const visual = visualAssets[kind];
       return { id: `image-${index + 2}`, visualKind: kind, visualSrc: visual.src, visualLabel: visual.label, visualAlt: visual.alt, visualHeadline: index === 0 ? "先从实际用途开始" : "把关心的问题说清楚", visualSubline: index === 0 ? "封面 · 使用场景概念示意" : `${visual.label} · 概念示意`, role: index === 0 ? "场景" : "补充" };
     }));
+    images.forEach(image => fillImageMeta(image, platform));
     output.imageMode = "multi"; return images;
   }
   function enrichStrategy(s, d) {
@@ -306,7 +519,7 @@
     const coreIdea = `${creative ? `以「${creative}」为主题，` : ""}${profile.content}。${sceneFirst ? `画面从${taskSubject}展开` : a.description}；${platformNote}。` + (fewerSpecs ? "减少参数罗列，重点说明实际任务与已核实信息的联系。" : "");
     const reason = `${confirmedAudience ? `面向已确认的${confirmedAudience}，` : ""}${profile.reason}。${confirmedScene ? `已明确的${confirmedScene}可作为内容主线；` : ""}${p ? `${p.name}仅作为讨论对象，` : ""}${channels.length ? `按${channels.join("、")}组织内容` : "平台未定，先保留通用框架"}，不预设产品适配或推广效果。`;
     const copy = `${creative ? `这次一起看看「${creative}」。` : ""}${confirmedScene ? `如果你正在关注${confirmedScene}，` : ""}${profile.body} ${sceneFirst ? a.body.replace("从", "可以从") : a.body}`;
-    const presented = { ...clean, name: title, claim: title, coreIdea, contentFormat: channels.includes("视频号") ? "口播短视频脚本" : a.format, opening: natural ? `最近用电脑完成什么任务？${title}` : title, copy, cta: profile.action, recommendationReason: reason, previewTitle: creative || (confirmedScene ? `${confirmedScene}：${profile.theme}` : profile.theme), adjustmentNote: note, contentTheme: creative || profile.theme, productIntegration: productNote, executionAdvice: "发布前核对型号与官方资料；顾客咨询后按已核实信息回应，无法确认的内容如实说明。" };
+    const presented = { ...clean, name: title, claim: title, coreIdea, contentFormat: channels.includes("视频号") ? "口播短视频脚本" : channels.includes("门店海报") ? "门店海报文案" : channels.includes("公众号") ? "公众号文章" : a.format, opening: natural ? `最近用电脑完成什么任务？${title}` : title, copy, cta: profile.action, recommendationReason: reason, previewTitle: creative || (confirmedScene ? `${confirmedScene}：${profile.theme}` : profile.theme), adjustmentNote: note, contentTheme: creative || profile.theme, productIntegration: productNote, executionAdvice: "发布前核对型号与官方资料；顾客咨询后按已核实信息回应，无法确认的内容如实说明。" };
     const finalStrategy = { ...presented, ...strategyVisual(presented, d), goal: d.goal, product: d.product, confirmedAudience, platforms: [...channels], fieldStatus: { ...d.fieldStatus }, scene: confirmedScene, creative, factBasis: p ? `${p.name}：${p.facts[0]}。来源为原型示例目录，仅名称与系列资料；无已核实的配置与性能。` : "尚未选择型号，无已核实的产品规格资料。" };
     if (natural) finalStrategy.narrative = "用日常提问与简洁回应自然展开";
     return Object.fromEntries(Object.entries(finalStrategy).map(([key, value]) => [key, typeof value === "string" ? G.respectExclusions(value, d.excludedScenes) : Array.isArray(value) ? value.map(item => typeof item === "string" ? G.respectExclusions(item, d.excludedScenes) : item) : value]));
@@ -402,13 +615,20 @@
       if (platform === "视频号") { title = `选电脑聊一聊：${s.name}`; body = `【开场提问】\n${opening}\n\n【镜头与口播】\n${taskBody[d.task]}\n\n【结尾】\n${s.cta}`; }
       if (d.audience) body = `这次，想和${d.audience}聊聊选电脑。` + body;
       if (platform === "微信朋友圈") body = body.split("\n\n").slice(0, 3).join("\n\n");
+      if (platform === "公众号") body = `导语｜${opening}\n\n${body}`;
       body += "\n\n具体型号、配置、价格及活动信息以核实结果为准。";
+      if (platform === "门店海报") {
+        const posterSub = G.respectExclusions(s.scene ? `${s.scene}，从实际用途开始` : "了解有依据的产品信息，再决定是否适合", d.excludedScenes);
+        const posterPoints = [...new Set([s.claim, s.name, s.cta].filter(Boolean))].slice(0, 3);
+        body = [`【主标题】${title}`, `【副标题】${posterSub}`, "【核心卖点】", ...posterPoints.map((point, index) => `${index + 1}. ${G.respectExclusions(point, d.excludedScenes)}`), "【活动说明】价格、赠品与活动内容须以门店核实结果为准；本海报不预先承诺未核实信息，不拉伸或错配型号图片。"].join("\n");
+      }
       body = G.respectExclusions(applyRequirements(body, requirements.join("；"), d.tone), d.excludedScenes);
       const goal = s.goal || d.goal || d.task;
       const headlines = { awareness: "从你的日常，认识一台电脑", consultation: "选电脑，带着问题来聊聊", needs: "适合自己，比急着换新更重要", store: "带着真实任务，了解一台电脑", launch: "认识新产品，先读懂资料", season: "新计划开始，先看看设备够不够用" };
       const sublines = { awareness: "从实际用途出发，了解有依据的产品信息", consultation: "用途、软件、预算，让选购沟通更具体", needs: "列出必要需求，再对照可靠资料", store: "展示型号与到访安排，请先联系门店确认", launch: "具体型号与上市信息，需经可靠资料确认", season: "新阶段不等于必须换新，按实际需要判断" };
       const visual = visualAssets[s.visualKind] || visualAssets.scene;
-      const output = { title: G.respectExclusions(title, d.excludedScenes), body, cta: s.cta, requirementNote: requirements.join("；"), tone: d.tone, shortened: false, edited: false, imageEdited: false, strategy: JSON.parse(JSON.stringify(s)), visualKind: s.visualKind || "scene", visualSrc: visual.src, visualLabel: visual.label, visualAlt: visual.alt, visualNote: "本地演示素材 · 通用电脑插画，非指定型号实拍；非实时 AI 生成", visualHeadline: G.respectExclusions(s.creative || (s.scene ? `${s.scene}，从实际用途开始` : headlines[goal]) || s.previewTitle || s.name, d.excludedScenes), visualSubline: G.respectExclusions(sublines[goal] || s.previewNote, d.excludedScenes), layout: s.angle === 1 ? "editorial" : "scene", images: [{ id: "image-1", visualKind: s.visualKind || "scene", visualSrc: visual.src, visualLabel: visual.label, visualAlt: visual.alt, visualHeadline: G.respectExclusions(s.creative || (s.scene ? `${s.scene}，从实际用途开始` : headlines[goal]) || s.previewTitle || s.name, d.excludedScenes), visualSubline: G.respectExclusions(sublines[goal] || s.previewNote, d.excludedScenes), role: "封面" }], activeImageId: "image-1", imageMode: "single" };
+      const output = { title: G.respectExclusions(title, d.excludedScenes), body, cta: s.cta, requirementNote: requirements.join("；"), tone: d.tone, shortened: false, edited: false, imageEdited: false, strategy: JSON.parse(JSON.stringify(s)), visualKind: s.visualKind || "scene", visualSrc: visual.src, visualLabel: visual.label, visualAlt: visual.alt, visualNote: "本地演示素材 · 通用电脑插画，非指定型号实拍；非实时 AI 生成", visualHeadline: G.respectExclusions(s.creative || (s.scene ? `${s.scene}，从实际用途开始` : headlines[goal]) || s.previewTitle || s.name, d.excludedScenes), visualSubline: G.respectExclusions(sublines[goal] || s.previewNote, d.excludedScenes), layout: s.angle === 1 ? "editorial" : "scene", images: [{ id: "image-1", visualKind: s.visualKind || "scene", visualSrc: visual.src, visualLabel: visual.label, visualAlt: visual.alt, visualHeadline: G.respectExclusions(s.creative || (s.scene ? `${s.scene}，从实际用途开始` : headlines[goal]) || s.previewTitle || s.name, d.excludedScenes), visualSubline: G.respectExclusions(sublines[goal] || s.previewNote, d.excludedScenes), role: "封面", source: demoImageSource, caption: imageCaption(platform, visual.label, "封面"), position: platformSpec(platform).poster ? "海报主视觉" : "封面（首图）" }], activeImageId: "image-1", imageMode: "single" };
+      makeMultiImage(output, platform);
       output.initial = JSON.parse(JSON.stringify(output));
       return [platform, output];
     }));
@@ -422,7 +642,7 @@
     return body;
   }
   // Pure helpers are shared with the offline behavior tests.
-  window.MarketingPrototypeModel = { fresh, strategyOptions, createOutputs, calendarDay, opportunityState, eligibleOpportunities, dailyOpportunity, nextOpportunity };
+  window.MarketingPrototypeModel = { fresh, strategyOptions, createOutputs, calendarDay, opportunityState, eligibleOpportunities, dailyOpportunity, nextOpportunity, placePosition, geoDistanceText, geoDemoMode };
   function navigate(page, focus = true) {
     if (!routes.includes(page)) page = "home";
     if (["guide", "analysis"].includes(page)) ensureGuide();
@@ -444,7 +664,7 @@
     if (!o) return `<div class="mc-empty mc-opportunity-empty"><h3>暂时没有依据充分的特殊机会</h3><p>可以从产品特点、使用场景或顾客选购问题开始，先整理值得进一步了解的方向。</p><div class="mc-opportunity-actions">${button("探索产品特点", "explore-product", "mc-secondary")}${button("查看门店设置", "settings", "mc-link")}</div></div>`;
     const alternatives = items.filter(item => item.id !== o.id);
     const action = o.type === "时间节点" ? "查看时间节点" : o.type === "门店场景" ? "查看周边场景" : "查看产品探索";
-    return `<article class="mc-featured" aria-labelledby="mc-featured-title"><div class="mc-featured-copy"><div class="mc-featured-meta"><span>${esc(o.type)}</span><span class="mc-opportunity-status ${o.verification !== "ready" ? "needs-confirmation" : ""}">${esc(o.status)}</span></div><h3 id="mc-featured-title" aria-live="polite">${esc(o.title)}</h3><p class="mc-featured-description">${esc(o.description)}</p><p class="mc-featured-reason"><strong>值得关注</strong>${esc(o.reason)}</p><div class="mc-opportunity-actions">${button(`${action} ${icon("arrow-up-right")}`, "preview-opportunity", "mc-primary", `data-id="${esc(o.id)}"`)}</div></div><div class="mc-featured-visual" aria-hidden="true"><div class="mc-art ${o.visual === "store" ? "mc-art-three" : "mc-art-one"}"><strong>${o.visual === "store" ? "从一次<br>好提问开始" : "让选择<br>更有依据"}</strong>${o.visual === "store" ? '<span class="mc-portal"></span>' : '<span class="mc-laptop"></span>'}</div></div></article><div class="mc-featured-tools"><details class="mc-opportunity-details"><summary>查看推荐依据与其他推广机会 ${icon("arrow-up-right")}</summary><div class="mc-opportunity-evidence"><dl class="mc-definition"><dt>推荐依据</dt><dd>${esc(o.evidence)}</dd><dt>相关产品</dt><dd>华为 PC 示例目录；仅提供名称与系列，具体功能和场景适配待核验。</dd><dt>适用场景</dt><dd>${esc(o.scene)}</dd><dt>待确认信息</dt><dd>${esc(o.unknown)}</dd><dt>建议准备</dt><dd>${o.preparationDays} 天；${o.daysUntil ? `距建议执行窗口 ${o.daysUntil} 天` : "已进入建议执行窗口"}。排期以门店实际安排为准。</dd></dl><p class="mc-muted">当前推荐使用模拟机会与样例排期，按日期筛选；未接入实时市场数据，也不代表官方活动或已核实需求。</p>${o.id === "local" ? button("补充门店线索", "settings", "mc-link") : ""}<h4>其他可探索的机会</h4>${alternatives.length ? `<ul class="mc-other-opportunities">${alternatives.map(item => `<li><div><strong>${esc(item.title)}</strong><span>${esc(item.type)} · ${esc(item.status)}</span></div>${button("查看机会", "preview-opportunity", "mc-link", `data-id="${esc(item.id)}"`)}</li>`).join("")}</ul>` : '<p class="mc-muted">目前只有这一条符合条件的机会。</p>'}</div></details><div class="mc-switch-control"><span>${items.length > 1 ? `${items.length} 条可探索` : "目前仅此一条"}</span>${button(`${icon("refresh-cw")} 换一条推荐`, "next-opportunity", "mc-link", items.length < 2 ? 'disabled aria-label="暂无其他符合条件的推荐"' : "")}</div></div>`;
+    return `<article class="mc-featured" aria-labelledby="mc-featured-title"><div class="mc-featured-copy"><div class="mc-featured-meta"><span>${esc(opportunityTypeLabel(o.type))}</span><span class="mc-opportunity-status ${o.verification !== "ready" ? "needs-confirmation" : ""}">${esc(o.status)}</span></div><h3 id="mc-featured-title" aria-live="polite">${esc(o.title)}</h3><p class="mc-featured-description">${esc(o.description)}</p><p class="mc-featured-reason"><strong>值得关注</strong>${esc(o.reason)}</p><div class="mc-opportunity-actions">${button(`${action} ${icon("arrow-up-right")}`, "preview-opportunity", "mc-primary", `data-id="${esc(o.id)}"`)}</div></div><div class="mc-featured-visual" aria-hidden="true"><div class="mc-art ${o.visual === "store" ? "mc-art-three" : "mc-art-one"}"><strong>${o.visual === "store" ? "从一次<br>好提问开始" : "让选择<br>更有依据"}</strong>${o.visual === "store" ? '<span class="mc-portal"></span>' : '<span class="mc-laptop"></span>'}</div></div></article><div class="mc-featured-tools"><details class="mc-opportunity-details"><summary>查看推荐依据与其他推广机会 ${icon("arrow-up-right")}</summary><div class="mc-opportunity-evidence"><dl class="mc-definition"><dt>推荐依据</dt><dd>${esc(o.evidence)}</dd><dt>相关产品</dt><dd>华为 PC 示例目录；仅提供名称与系列，具体功能和场景适配待核验。</dd><dt>适用场景</dt><dd>${esc(o.scene)}</dd><dt>待确认信息</dt><dd>${esc(o.unknown)}</dd><dt>建议准备</dt><dd>${o.preparationDays} 天；${o.daysUntil ? `距建议执行窗口 ${o.daysUntil} 天` : "已进入建议执行窗口"}。排期以门店实际安排为准。</dd></dl><p class="mc-muted">当前推荐使用模拟机会与样例排期，按日期筛选；未接入实时市场数据，也不代表官方活动或已核实需求。</p>${o.id === "local" ? button("补充门店线索", "settings", "mc-link") : ""}<h4>其他可探索的机会</h4>${alternatives.length ? `<ul class="mc-other-opportunities">${alternatives.map(item => `<li><div><strong>${esc(item.title)}</strong><span>${esc(opportunityTypeLabel(item.type))} · ${esc(item.status)}</span></div>${button("查看机会", "preview-opportunity", "mc-link", `data-id="${esc(item.id)}"`)}</li>`).join("")}</ul>` : '<p class="mc-muted">目前只有这一条符合条件的机会。</p>'}</div></details><div class="mc-switch-control"><span>${items.length > 1 ? `${items.length} 条可探索` : "目前仅此一条"}</span>${button(`${icon("refresh-cw")} 换一条推荐`, "next-opportunity", "mc-link", items.length < 2 ? 'disabled aria-label="暂无其他符合条件的推荐"' : "")}</div></div>`;
   }
   function renderHomeProducts() {
     const selected = D.products.find(p => p.id === state.homeProduct);
@@ -454,16 +674,34 @@
     $("#mc-home-product-count").textContent = matches.length ? `${matches.length} 个匹配条目 · 仅名称示例` : "暂未找到匹配产品";
     $("#mc-home-product-results").innerHTML = matches.map(p => button(`<span><strong>${esc(p.name)}</strong><small>${esc(p.family || "MateBook 系列")} · 演示条目</small></span>${state.homeProduct === p.id ? `${icon("check")}<span>已选</span>` : "<span>选择</span>"}`, "home-product-select", "mc-home-product-option", `data-id="${esc(p.id)}" aria-pressed="${state.homeProduct === p.id}"`)).join("") || '<p class="mc-muted">请换个关键词，或暂不选择产品。不会自动补全目录外型号。</p>';
   }
+  const homePlatformOptions = [["微信朋友圈", "熟人扩散"], ["小红书", "种草搜索"], ["公众号", "深度图文"], ["视频号", "短视频"], ["门店海报", "到店转化"]];
+  function renderHomePlatforms() {
+    const menu = $("#mc-home-platform-menu");
+    const toggleText = $("#mc-platform-toggle-text");
+    const toggle = $("#mc-platform-toggle");
+    const sel = state.draft.platforms;
+    if (toggleText) toggleText.textContent = sel.length > 1 ? `${sel[0]} 等 ${sel.length} 个` : (sel[0] || "请选择");
+    if (!menu) return;
+    if (toggle) toggle.setAttribute("aria-expanded", String(homePlatformMenuOpen));
+    if (!homePlatformMenuOpen) { menu.hidden = true; return; }
+    menu.hidden = false;
+    const names = homePlatformOptions.map(([name]) => name).concat(platforms.filter(p => !homePlatformOptions.some(([n]) => n === p))).filter(p => p !== "视频号");
+    menu.innerHTML = names.map(p => `<button type="button" role="menuitemcheckbox" aria-checked="${sel.includes(p)}" class="mc-platform-option ${sel.includes(p) ? "is-chosen" : ""}" data-action="home-platform" data-id="${esc(p)}">${sel.includes(p) ? icon("check") : ""}<span>${esc(p)}</span></button>`).join("") + `<p class="mc-platform-menu-hint">至少选择一个；会带入后续策略与成果</p>`;
+  }
   function renderHome() {
     $("#mc-prompt").value = state.homePrompt;
     renderHomeProducts();
+    renderHomePlatforms();
     $("#mc-task-feedback").textContent = "不必准备完整方案 · 产品与推广内容须人工复核";
-    $("#mc-opportunity-cards").innerHTML = opportunityCards();
-    $("#mc-recommendation-date").textContent = new Date().toLocaleDateString("zh-CN", { month: "long", day: "numeric" });
+    // 首页推荐区已移除（推广机会页保留完整推荐），此处守卫兼容旧页面结构
+    const cards = $("#mc-opportunity-cards");
+    if (cards) cards.innerHTML = opportunityCards();
+    const recDate = $("#mc-recommendation-date");
+    if (recDate) recDate.textContent = new Date().toLocaleDateString("zh-CN", { month: "long", day: "numeric" });
   }
   const choice = (label, value, selected, action, extra = "") => button(`${selected ? icon("check") : ""}${esc(label)}`, action, `mc-choice ${selected ? "selected" : ""}`, `data-id="${esc(value)}" aria-pressed="${selected}" ${extra}`);
   function opportunitySource(o) {
-    return `<div class="mc-source mc-opportunity-source"><span class="mc-muted">所选机会 · ${esc(o.type)} · ${esc(o.status || "样例排期待确认")}</span><strong>${esc(o.title)}</strong><p>${esc(o.description)}</p><p><b>推荐理由</b> ${esc(o.reason)}</p><details><summary>推荐依据与待核实信息</summary><p>${esc(o.evidence)}</p><p>探索方向：${esc(o.direction)}</p><p>待核实：${esc(o.unknown)}</p><p>模拟机会与样例排期，不代表热点、已核实需求或产品适配；目标由本次对话确认。</p></details></div>`;
+    return `<div class="mc-source mc-opportunity-source"><span class="mc-muted">所选机会 · ${esc(opportunityTypeLabel(o.type))} · ${esc(o.status || "样例排期待确认")}</span><strong>${esc(o.title)}</strong><p>${esc(o.description)}</p><p><b>推荐理由</b> ${esc(o.reason)}</p><details><summary>推荐依据与待核实信息</summary><p>${esc(o.evidence)}</p><p>探索方向：${esc(o.direction)}</p><p>待核实：${esc(o.unknown)}</p><p>模拟机会与样例排期，不代表热点、已核实需求或产品适配；目标由本次对话确认。</p></details></div>`;
   }
   function summary() {
     const d = state.draft;
@@ -490,12 +728,16 @@
   function guideContext() { return G.resolve(ensureGuide(), state.draft.opportunity); }
   function syncGuide() {
     const c = guideContext(), d = state.draft;
-    Object.assign(d, { product: c.product, goal: c.goal, focus: c.focus, task: c.task, audience: c.audience, platforms: c.platforms, extra: "", scene: c.scene, creative: c.creative, excludedScenes: c.excludedScenes, fieldStatus: c.fieldStatus, short: c.short, noPrice: c.noPrice });
+    Object.assign(d, { product: c.product, goal: c.goal, focus: c.focus, task: c.task, audience: c.audience, platforms: c.platforms, extra: "", scene: c.scene, creative: c.creative, tone: c.tone || "自然真诚", excludedScenes: c.excludedScenes, fieldStatus: c.fieldStatus, short: c.short, noPrice: c.noPrice });
     // Freeze each response once. Later answers may change the summary, never past messages.
     const g = ensureGuide();
     if (d.opportunity && !g.intro) g.intro = G.opportunityIntro(d.opportunity, c);
     if (!g.welcome) g.welcome = G.response(G.resolve(g, d.opportunity, 0), null, 0);
-    g.events.forEach((event, i) => { if (typeof event.response !== "string") event.response = G.response(G.resolve(g, d.opportunity, i + 1), event, i + 1); });
+    g.events.forEach((event, i) => {
+      if (typeof event.response === "string") return;
+      if (g.thinking && i === g.events.length - 1) return; // 「正在思考」节拍结束后再补上回复
+      event.response = G.response(G.resolve(g, d.opportunity, i + 1), event, i + 1);
+    });
     save();
     return c;
   }
@@ -513,29 +755,104 @@
     return state.homeProductDeferred ? { product: "", productDeferred: true } : {};
   }
   function addGuideChoice(text, patch) {
-    ensureGuide().events.push({ kind: "choice", text, patch });
+    const g = ensureGuide();
+    g.events.push({ kind: "choice", text, patch });
+    beginThinking(g);
     invalidate(); syncGuide();
+  }
+  function browserEnv() {
+    return typeof requestAnimationFrame === "function" && typeof document !== "undefined" && typeof document.hasFocus === "function";
+  }
+  function beginThinking(g) {
+    // 仅在真实浏览器里给 AI 回复一个短暂的「正在思考」节拍；测试与静态环境保持同步渲染。
+    if (!browserEnv()) return;
+    g.thinking = true;
+    setTimeout(() => {
+      const gg = ensureGuide();
+      if (!gg.thinking) return;
+      gg.thinking = false;
+      invalidate(); syncGuide(); render();
+      const input = $("#guide-input"); if (input) input.focus();
+    }, 420);
+  }
+  function optionsBlock(question, buttonsHtml, extra) {
+    return `<div class="mc-options"><p class="mc-options-q">${esc(question)}</p><div class="mc-guide-options">${buttonsHtml}</div>${extra || ""}</div>`;
   }
   function guideActions(c, g) {
     const stage = G.stage(c);
     if (stage === "product-conflict") return `<h3>请确认本次讨论产品</h3><p>首页所选产品与输入型号不一致，确认前不生成策略。</p><div class="mc-choice-row">${c.productConflict.map(id => button(esc(D.products.find(p => p.id === id)?.name || id), "guide-product", "mc-secondary", `data-id="${id}"`)).join("")}${button("暂不指定产品", "guide-skip-product", "mc-link")}</div>`;
     if (g.editing) return `<form id="guide-summary-form" class="mc-guide-edit"><h3>修改已理解的需求</h3><label class="mc-field"><span>推广目标</span><select name="goal"><option value="" ${!c.goal ? "selected" : ""}>尚未明确</option>${Object.entries(G.names).map(([id, name]) => `<option value="${id}" ${c.goal === id ? "selected" : ""}>${name}</option>`).join("")}</select></label><label class="mc-field"><span>目标受众（可留空）</span><input name="audience" value="${esc(c.audience)}"></label><label class="mc-field"><span>产品（演示目录）</span><select name="product"><option value="">暂不指定型号</option>${D.products.map(p => `<option value="${p.id}" ${c.product === p.id ? "selected" : ""}>${esc(p.name)}</option>`).join("")}</select></label><div class="mc-choice-row"><button type="submit" class="mc-primary">保存修改</button>${button("取消", "guide-cancel", "mc-secondary")}</div></form>`;
     if (stage === "clarification" && !g.panel) return `<h3>请确认本次修改</h3><p>${esc(c.clarification)}</p><div class="mc-choice-row">${button("确认沿用当前摘要", "guide-confirm-current", "mc-secondary")}${button("修改需求摘要", "guide-edit", "mc-link")}</div>`;
-    if (g.panel === "platform") return `<h3>按本次任务补充渠道</h3><div class="mc-choice-row">${platforms.map(p => choice(p, p, c.platforms.includes(p), "guide-platform")).join("")}</div><p class="mc-muted">${esc(platformHint(c.platforms))}</p>${button("完成渠道选择", "guide-close-panel", "mc-secondary")}`;
-    if (stage === "opportunity-goal") return `<h3>这条机会，本次优先做什么？</h3><div class="mc-guide-directions">${G.opportunityGoals(c.opportunity).map(item => button(`<strong>${esc(item.title)}</strong><span>${esc(item.note)}</span>`, "guide-goal", "mc-guide-option", `data-id="${item.id}"`)).join("")}</div>${button("由 AI 帮我判断", "guide-auto", "mc-link")}`;
-    if (stage === "opportunity-focus") return `<h3>围绕目标，先确定一个重点</h3><div class="mc-guide-directions">${G.focusOptions(c).map(item => button(`<strong>${esc(item.title)}</strong><span>${esc(item.note)}</span>`, "guide-focus", "mc-guide-option", `data-id="${item.id}"`)).join("")}</div>${button("先比较策略，细节稍后补充", "guide-strategies", "mc-link")}`;
-    if (stage === "direction") return `<h3>先探索一个方向</h3><div class="mc-guide-directions">${G.directions(g.directionRound).map(item => button(`<strong>${esc(item.title)}</strong><span>${esc(item.note)}</span>`, "guide-direction", "mc-guide-option", `data-id="${item.id}"`)).join("")}</div><div class="mc-choice-row">${button("重新推荐方向", "guide-directions", "mc-link")}${button("由 AI 帮我判断", "guide-auto", "mc-link")}</div>`;
-    if (stage === "priority") return `<h3>本次更优先的目标</h3><div class="mc-choice-row">${G.goals.map(item => choice(item.label, item.id, false, "guide-goal")).join("")}${button("由 AI 帮我判断", "guide-auto", "mc-secondary")}</div>`;
-    if (stage === "product") return `<div class="mc-panel-heading"><h3>先比较两个候选</h3><span class="mc-tag">演示数据</span></div><div class="mc-guide-products">${G.candidates(c, D.products, g.candidateRound).map(p => button(`${icon("laptop")}<strong>${esc(p.name)}</strong><span>${esc(p.demoReason)}</span><small>待核实：具体型号、规格、软件适配及门店展示。</small><b>选择这个讨论对象 ${icon("arrow-up-right")}</b>`, "guide-product", "mc-guide-option", `data-id="${p.id}"`)).join("")}</div><p class="mc-muted">依据仅为模拟选题标签，不代表真实在售、性能排序或适配结论。</p><div class="mc-choice-row">${button("重新推荐候选", "guide-candidates", "mc-link")}${button("暂不指定产品，继续", "guide-skip-product", "mc-link")}</div>`;
-    return `<h3>可以开始比较推广策略了</h3><p>已明确的信息会继续沿用；产品与门店条件尚未确认的部分会作为核实提醒。</p><div class="mc-choice-row">${button(`查看推广策略 ${icon("arrow-up-right")}`, "guide-strategies", "mc-primary")}${button(c.product ? "更换讨论产品" : "按需比较产品", "guide-reselect-product", "mc-link")}${button("补充发布渠道", "guide-channels", "mc-link")}</div>`;
+    if (g.panel === "platform") return `<div class="mc-options"><p class="mc-options-q">内容要发到哪里？可以随时更换。</p><div class="mc-choice-row">${platforms.map(p => choice(p, p, c.platforms.includes(p), "guide-platform")).join("")}</div><p class="mc-muted">${esc(platformHint(c.platforms))}</p>${button("完成", "guide-close-panel", "mc-primary")}</div>`;
+    if (stage === "opportunity-goal") return optionsBlock("这条机会，你希望顾客最后做什么？", G.opportunityGoals(c.opportunity).map(item => button(`<strong>${esc(item.title)}</strong><span>${esc(item.note)}</span>`, "guide-goal", "mc-guide-option", `data-id="${item.id}"`)).join(""), button("让规则给个建议", "guide-auto", "mc-link"));
+    if (stage === "opportunity-focus") return optionsBlock("围绕这个目标，先聚焦哪一个重点？", G.focusOptions(c).map(item => button(`<strong>${esc(item.title)}</strong><span>${esc(item.note)}</span>`, "guide-focus", "mc-guide-option", `data-id="${item.id}"`)).join(""), button("先比较策略，细节稍后补充", "guide-strategies", "mc-link"));
+    if (stage === "direction") return optionsBlock("可以从这几个方向里挑一个开始，都是供参考的建议。", G.directions(g.directionRound).map(item => button(`<strong>${esc(item.title)}</strong><span>${esc(item.note)}</span>`, "guide-direction", "mc-guide-option", `data-id="${item.id}"`)).join(""), `<div class="mc-choice-row">${button("换一组方向", "guide-directions", "mc-link")}${button("让规则给个建议", "guide-auto", "mc-link")}</div>`);
+    if (stage === "priority") return optionsBlock("这次先做哪一个目标？", G.goals.map(item => choice(item.label, item.id, false, "guide-goal")).join(""), button("让规则给个建议", "guide-auto", "mc-secondary"));
+    if (stage === "product") return `<div class="mc-options"><div class="mc-panel-heading"><p class="mc-options-q">还差一个讨论对象，先比较两个候选（演示标签，仅用于讨论）</p><span class="mc-tag">演示数据</span></div><div class="mc-guide-products">${G.candidates(c, D.products, g.candidateRound).map(p => button(`${icon("laptop")}<strong>${esc(p.name)}</strong><span>${esc(p.demoReason)}</span><small>待核实：具体型号、规格、软件适配及门店展示。</small><b>选择这个讨论对象 ${icon("arrow-up-right")}</b>`, "guide-product", "mc-guide-option", `data-id="${p.id}"`)).join("")}</div><p class="mc-muted">依据仅为模拟选题标签，不代表真实在售、性能排序或适配结论。</p><div class="mc-choice-row">${button("换一组候选", "guide-candidates", "mc-link")}${button("暂不指定产品，继续", "guide-skip-product", "mc-link")}</div></div>`;
+    if (stage === "ready" && c.fieldStatus.tone !== "confirmed" && !g.toneAsked) {
+      const toneNotes = { "自然真诚": "像平时聊天一样介绍，不堆砌参数", "简洁专业": "直接给结论和选购建议", "轻松亲切": "轻松一点，先拉近距离" };
+      return optionsBlock("生成前还有一个可选问题：这次内容想要什么语气？选好后进入策略比较，也可以稍后在总结卡里换。", ["自然真诚", "简洁专业", "轻松亲切"].map(t => button(`<strong>${esc(t)}</strong><span>${esc(toneNotes[t])}</span>`, "guide-tone", "mc-guide-option", `data-id="${t}"`)).join(""), button("就按自然真诚来", "guide-tone-default", "mc-link"));
+    }
+    const focus = G.focusOptions(c).find(item => item.id === c.focus);
+    const unknowns = [!c.product && !c.productDeferred ? "具体型号" : "", !c.audience ? "目标受众" : "", c.opportunity?.unknown ? "机会附带的待确认项" : ""].filter(Boolean);
+    return `<div class="mc-ready-card"><p class="mc-options-q">信息够了，可以直接比较策略；以下是目前掌握的内容。</p><dl class="mc-ready-summary">
+      <div><dt>推广目标</dt><dd>${esc(G.names[c.goal] || "待明确")}</dd></div>
+      <div><dt>目标受众</dt><dd>${esc(c.audience || "未指定，策略中保留待核实")}</dd></div>
+      <div><dt>内容方向</dt><dd>${esc(focus?.title || "待选择重点")}</dd></div>
+      <div><dt>发布渠道</dt><dd>${esc(c.platforms.join(" / ") || "暂未指定")}</dd></div>
+      <div><dt>内容语气</dt><dd>${esc(c.tone || "自然真诚（默认）")}</dd></div>
+      <div><dt>待核实</dt><dd>${esc(unknowns.join("、") || "产品资料与门店服务需常规核实")}</dd></div>
+    </dl><div class="mc-tone-row" role="group" aria-label="内容语气"><span>语气</span>${["自然真诚", "简洁专业", "轻松亲切"].map(t => button(esc(t), "guide-tone", `mc-tone-chip${(c.tone || "自然真诚") === t ? " is-on" : ""}`, `data-id="${t}"`)).join("")}</div><div class="mc-choice-row">${button(`进入推广策略 ${icon("arrow-up-right")}`, "guide-strategies", "mc-primary")}${button("修改需求", "guide-edit", "mc-link")}</div></div>`;
   }
   function guidePage() {
     const g = ensureGuide(), c = syncGuide();
     const title = state.draft.opportunity?.title || (c.goal ? `${G.names[c.goal]}的推广任务` : "一起梳理这次推广想法");
-    const transcript = g.events.map((event, i) => {
-      return `<div class="mc-message mc-message-user"><span>你</span><p>${esc(event.text)}</p></div><div class="mc-message mc-message-agent"><span>${icon("sparkles")} Agent · 规则模拟</span><p>${esc(event.response)}</p></div>`;
-    }).join("");
-    return `<div class="mc-step-row">${button(`${icon("arrow-left")} 返回首页`, "home", "mc-back")}<span class="mc-guide-progress">${G.stage(c) === "ready" ? "需求已整理，可以比较策略" : "正在理解需求"} · 下一步：推广策略</span></div>${pageHead(esc(title), "连续补充想法即可，不必先填完所有信息。当前使用前端规则模拟，未连接真实 AI。", button("重新开始", "guide-restart", "mc-secondary"))}<div class="mc-guide-layout"><section class="mc-panel mc-conversation"><h2>AI 引导工作台</h2><div class="mc-transcript" role="log" aria-label="任务对话">${state.draft.opportunity ? `${opportunitySource(state.draft.opportunity)}<div class="mc-message mc-message-agent"><span>${icon("sparkles")} Agent · 规则模拟</span><p>${esc(g.intro)}</p></div>` : ""}${transcript || (state.draft.opportunity ? "" : `<div class="mc-message mc-message-agent"><span>${icon("sparkles")} Agent · 规则模拟</span><p>${esc(g.welcome)}</p></div>`)}</div><div class="mc-guide-actions" aria-live="polite">${guideActions(c, g)}</div><form id="guide-compose" class="mc-guide-compose"><label for="guide-input" class="sr-only">继续补充你的想法</label><textarea id="guide-input" rows="2" placeholder="继续补充想法，或说说目前最想解决的问题…">${esc(g.composer || "")}</textarea><button type="submit" class="mc-primary">发送 ${icon("arrow-up-right")}</button></form><p class="mc-muted">模拟规则可识别目标、受众、示例型号与渠道；其他描述会原样保留，不代表已执行。</p></section><aside class="mc-panel mc-guide-summary"><div class="mc-panel-heading"><h2>已理解的需求</h2>${button("修改", "guide-edit", "mc-link")}</div><dl class="mc-definition"><dt>推广目标</dt><dd>${esc(G.names[c.goal] || "待一起明确")}</dd><dt>当前重点</dt><dd>${esc(G.focusOptions(c).find(item => item.id === c.focus)?.title || "待按目标选择")}</dd><dt>目标受众</dt><dd>${esc(c.audience || "尚未明确，可稍后补充")}</dd><dt>讨论产品</dt><dd>${esc(D.products.find(p => p.id === c.product)?.name || (c.productDeferred ? "暂不指定型号" : "尚未选择"))}</dd><dt>发布渠道</dt><dd>${esc(c.platforms.join(" / ") || "暂未指定")}<small>${esc(c.platformSource)}</small></dd></dl>${button("调整发布渠道", "guide-channels", "mc-link")}<details><summary>查看最初的想法</summary><p class="mc-original-prompt">${esc(state.draft.prompt || "从空白任务开始")}</p></details><p class="mc-muted">产品资料、门店服务与实际客群均需核实；这里记录的是本次任务意图。</p>${!c.opportunity && !["ready", "clarification", "product-conflict"].includes(G.stage(c)) ? button("先看策略，缺少的信息稍后补充", "guide-strategies", "mc-link") : ""}</aside></div>`;
+    let agentSeen = Boolean(state.draft.opportunity);
+    function agentMsg(text) {
+      const paras = String(text).split(/\n\n+/).map(part => `<p>${esc(part)}</p>`).join("");
+      const tag = agentSeen ? "" : `<span class="mc-msg-tag">${icon("sparkles")} Agent · 规则模拟</span>`;
+      agentSeen = true;
+      return `<div class="mc-msg mc-msg-agent${tag ? " is-first" : ""}">${tag}${paras}</div>`;
+    }
+    function userMsg(text) {
+      return `<div class="mc-msg mc-msg-user"><p>${esc(text)}</p></div>`;
+    }
+    const transcript = g.events.map(event => userMsg(event.text) + agentMsg(event.response)).join("");
+    const focusName = G.focusOptions(c).find(item => item.id === c.focus)?.title;
+    const productName = D.products.find(p => p.id === c.product)?.name;
+    const confirmed = [
+      c.goal ? ["推广目标", G.names[c.goal]] : null,
+      focusName ? ["内容重点", focusName] : null,
+      c.audience ? ["目标受众", c.audience] : null,
+      productName ? ["讨论产品", productName] : (c.productDeferred ? ["讨论产品", "暂不指定型号"] : null),
+      c.platforms.length && c.fieldStatus.platforms === "confirmed" ? ["发布渠道", c.platforms.join(" / ")] : null,
+      c.scene ? ["使用场景", c.scene] : null,
+      c.creative ? ["创意方向", c.creative] : null,
+      c.fieldStatus.tone === "confirmed" && c.tone ? ["内容语气", c.tone] : null,
+    ].filter(Boolean);
+    const pending = [
+      c.goal ? null : ["推广目标", "影响策略走向，先定一个", button("补充", "guide-prefill", "mc-link mc-sum-action", `data-text="这次推广目标是帮顾客建立产品认知"`)],
+      c.audience ? null : ["目标受众", "默认按到店顾客处理", button("补充", "guide-prefill", "mc-link mc-sum-action", `data-text="主要面向到店咨询的顾客"`)],
+      productName || c.productDeferred ? null : ["讨论产品", "不选也能继续", button("补充", "guide-prefill", "mc-link mc-sum-action", `data-text="想重点讨论 HUAWEI MateBook 14"`)],
+      c.platforms.length ? null : ["发布渠道", "至少保留一个", button("选择", "guide-channels", "mc-link mc-sum-action")],
+    ].filter(Boolean);
+    const optional = [
+      c.short ? ["篇幅要求", "简短"] : null,
+      c.noPrice ? ["价格口径", "不提价格"] : null,
+      c.notes.length ? ["补充想法", `${c.notes.length} 条已记录`] : null,
+      state.store.location ? ["门店位置", state.store.location] : null,
+    ].filter(Boolean);
+    function groupHtml(heading, rows, cls) {
+      if (!rows.length) return "";
+      return `<div class="mc-sum-group ${cls}"><h3>${heading}</h3><ul>${rows.map(r => `<li><small>${esc(r[0])}</small><span>${esc(r[1])}</span>${r[2] || ""}</li>`).join("")}</ul></div>`;
+    }
+    const readyBanner = G.stage(c) === "ready" ? `<div class="mc-sum-ready"><span>信息已足够，可以比较策略</span>${button("进入推广策略", "guide-strategies", "mc-link")}</div>` : "";
+    const emptyState = agentMsg(g.welcome) + `<div class="mc-suggest-row">${["这次主推 HUAWEI MateBook 14，吸引顾客到店体验", "趁开学季，面向附近大学生做推广", "用朋友圈和小红书发布，内容简短一点"].map(text => button(esc(text), "guide-suggest", "mc-suggest", `data-text="${esc(text)}"`)).join("")}</div>`;
+    const opportunityIntro = state.draft.opportunity ? opportunitySource(state.draft.opportunity) + agentMsg(g.intro) : "";
+    const lastEvent = g.events.at(-1);
+    const thinking = Boolean(g.thinking) && Boolean(lastEvent) && typeof lastEvent.response !== "string";
+    const typingBubble = thinking ? `<div class="mc-msg mc-msg-agent mc-msg-typing" aria-label="正在思考"><span class="mc-typing-dots"><i></i><i></i><i></i></span></div>` : "";
+    return `${steps(1)}${pageHead(esc(title), "像聊天一样补充想法就行。当前使用前端规则模拟，未连接真实 AI。", button("重新开始", "guide-restart", "mc-link"))}${geoContextCard()}<div class="mc-guide-layout"><section class="mc-panel mc-conversation"><div class="mc-transcript" role="log" aria-label="任务对话">${opportunityIntro}${transcript || (state.draft.opportunity ? "" : emptyState)}${typingBubble}</div><form id="guide-compose" class="mc-guide-compose"><textarea id="guide-input" rows="2" aria-label="输入你的想法，回车发送" placeholder="说说你这次想怎么推广……">${esc(g.composer || "")}</textarea><button type="submit" class="mc-primary">发送</button></form><div class="mc-guide-actions" aria-live="polite">${thinking ? "" : guideActions(c, g)}</div></section><aside class="mc-panel mc-guide-summary"><div class="mc-panel-heading"><h2>已理解的需求</h2>${button("修改", "guide-edit", "mc-link")}</div>${readyBanner}${groupHtml("已确认", confirmed, "is-confirmed")}${groupHtml("待确认", pending, "is-pending")}${groupHtml("可选补充", optional, "is-optional")}<div class="mc-sum-foot"><details><summary>最初的想法</summary><p class="mc-original-prompt">${esc(state.draft.prompt || "从空白任务开始")}</p></details><p class="mc-muted">${esc(c.platformSource)} · 产品资料与门店服务需核实，这里记录的是本次任务意图。</p></div></aside></div>`;
   }
 
   function config() {
@@ -543,7 +860,7 @@
     const storePrompt = d.task === "store" && !state.store.location.trim() ? `<div class="mc-source"><strong>到店信息可稍后完善</strong><p>还没有填写门店位置。可先继续分析，发布前再到门店设置补充。</p></div>` : "";
     return `${steps(1)}${pageHead("按需补充产品与渠道", "仅在需要时调整产品与渠道；也可以返回引导继续讨论。", button("返回需求引导", "guide", "mc-secondary"))}${summary()}<section class="mc-panel"><div class="mc-panel-heading"><h2>推广哪款产品</h2><span class="mc-muted">演示目录 · 无规格与价格承诺</span></div><div class="mc-product-tools"><label class="mc-search"><span class="sr-only">搜索产品</span><input id="product-search" type="search" placeholder="搜索产品名称" autocomplete="off"></label><label class="mc-search"><span class="sr-only">产品类别</span><select id="product-filter"><option value="">所有类别</option>${[...new Set(D.products.map(p => p.category))].map(category => `<option>${esc(category)}</option>`).join("")}</select></label></div><div class="mc-products">${D.products.map(p => `<button type="button" class="mc-product-card ${d.product === p.id ? "selected" : ""}" data-action="product" data-id="${p.id}" data-category="${p.category}" aria-pressed="${d.product === p.id}"><span class="mc-product-drawing" aria-hidden="true">${icon("laptop")}</span><strong>${esc(p.name)}</strong><span>${p.category} · 演示</span><small>${esc(p.note)}</small><span class="mc-product-state">${d.product === p.id ? `${icon("check")} 已选产品` : "选择产品"}</span></button>`).join("")}</div><p id="product-empty" class="mc-muted" hidden>未找到匹配产品，请换一个关键词。</p></section><section class="mc-panel"><h2>发布到哪里</h2><div class="mc-choice-row">${platforms.map(p => choice(p, p, d.platforms.includes(p), "platform")).join("")}</div><p class="mc-muted" id="platform-hint">${platformHint(d.platforms)}</p></section>${storePrompt}<div class="mc-action-bar"><p id="config-status" role="status">${product() ? "已选产品与发布平台，可开始分析。" : "可以不指定型号，先比较推广策略。"}</p>${button(`开始推广分析 ${icon("arrow-up-right")}`, "analyze", "mc-primary", d.platforms.length ? "" : "disabled")}</div>`;
   }
-  function platformHint(selected) { return selected.map(p => ({ "微信朋友圈": "朋友圈：短段落与咨询引导", "小红书": "小红书：标题、场景叙事与标签", "视频号": "视频号：口播与镜头建议", "其他平台": "其他平台：通用图文草稿" }[p])).join("；"); }
+  function platformHint(selected) { return selected.map(p => ({ "微信朋友圈": "朋友圈：短段落与咨询引导", "小红书": "小红书：标题、场景叙事与标签（建议 3-6 张图）", "公众号": "公众号：导语、分段正文与结尾引导（建议 2-4 张图）", "视频号": "视频号：口播与镜头建议", "门店海报": "门店海报：主副标题、3 个以内卖点与活动说明（主视觉 1 张）", "其他平台": "其他平台：通用图文草稿" }[p])).join("；"); }
   function strategyImage(s) {
     return `<figure class="mc-creative-preview"><img src="${esc(s.visualSrc)}" alt="${esc(s.visualAlt)}" width="640" height="400" decoding="async"><div class="mc-preview-composition"><span>${esc(s.visualLabel)} · 内容构想</span><strong>${esc(s.previewTitle || s.name)}</strong><small>${esc(s.previewNote || "概念示意，仅供创意参考")}</small></div><figcaption>本地演示插画 · 非指定型号实拍</figcaption><span class="mc-preview-fallback" hidden></span></figure>`;
   }
@@ -559,8 +876,8 @@
     const facts = p ? p.name + " 来自本地演示目录，仅作为讨论对象；型号规格、配置与适配需核实。来源资料：" + p.facts.join("；") : "尚未选择具体型号，当前方向不依赖未经核实的产品规格。";
     const fieldHtml = fields.map(([k, v]) => "<div><dt>" + esc(k) + "</dt><dd>" + esc(v) + "</dd></div>").join("");
     const alternativeHtml = alternatives.map(s => "<article><div><strong>" + esc(s.name) + "</strong><p>" + esc(s.coreIdea) + "</p></div>" + button("改用这个方向", "strategy", "mc-link", "data-id=\"" + esc(s.id) + "\"") + "</article>").join("");
-    const lead = selected ? "<article class=\"mc-lead-strategy\">" + strategyImage(selected) + "<div class=\"mc-lead-copy\"><div class=\"mc-lead-status\"><span>AI 主推方向</span><span>规则模拟</span></div><h2>" + esc(selected.name) + "</h2><p class=\"mc-lead-idea\">" + esc(selected.coreIdea) + "</p><p class=\"mc-lead-reason\"><strong>为什么适合这次推广</strong>" + esc(selected.recommendationReason || selected.reason) + "</p><div class=\"mc-creative-tags\"><span>" + esc(selected.expression) + "</span>" + (selected.platforms.length ? "<span>" + esc(selected.platforms.join(" / ")) + "</span>" : "") + "</div><div class=\"mc-expected-output\"><span>确认后预计生成</span><p>" + selected.expectedOutputs.map(esc).join(" · ") + "</p></div><details class=\"mc-creative-evidence\"><summary>查看推荐依据与待确认信息</summary><dl class=\"mc-definition\"><dt>当前有效依据</dt><dd>" + esc(Object.entries(selected.recommendationBasis || {}).map(([k, v]) => k + "：" + v).join("；")) + "</dd><dt>产品资料与来源</dt><dd>" + esc(selected.factBasis) + "</dd><dt>策略判断</dt><dd>" + esc(selected.evidence + " " + (selected.relation || "") + " " + (selected.executionAdvice || selected.plan || "")) + "</dd><dt>视觉建议</dt><dd>" + esc(selected.visualStyle + "。" + (selected.visualNote || "概念示意，不代表最终成图。")) + "</dd><dt>待人工确认</dt><dd>" + esc(selected.unknown + " " + (d.opportunity?.unknown || "")) + "</dd><dt>行动引导</dt><dd>" + esc(selected.cta) + "</dd></dl></details><div class=\"mc-lead-actions\">" + button("确认方向，生成推广图文", "generate", "mc-primary") + "</div></div></article>" : "<div class=\"mc-empty\"><p>暂时无法形成推荐方向，请返回需求引导补充一个关键信息。</p>" + button("返回需求引导", "guide", "mc-secondary") + "</div>";
-    return "<div class=\"mc-strategy-page\">" + steps(2) + pageHead("这次推广，我们建议这样做", "结合前面的需求，查看推荐主题与内容构想，确认后继续创作。", button("返回需求引导", "guide", "mc-secondary")) + "<section class=\"mc-task-brief\" aria-label=\"当前任务摘要\"><dl>" + fieldHtml + "</dl><p class=\"mc-brief-impact\">" + esc(impact) + "</p><details class=\"mc-task-details\"><summary>查看任务详情</summary><div class=\"mc-task-detail-grid\"><section><h3>任务与资料来源</h3><p>" + esc(d.prompt || "从推广机会开始探索") + "</p><p>" + esc(facts) + "</p><p>平台状态：" + (d.fieldStatus.platforms === "confirmed" ? "来自任务确认" : "尚未确认") + "。当前渠道：" + esc(d.fieldStatus.platforms === "confirmed" ? d.platforms.join(" / ") : "未指定（引导页建议可另行确认）") + "。</p>" + button("按需调整产品与渠道", "config", "mc-link") + "</section><section><h3>推断与待核实</h3><p>策略由当前有效任务状态和有限前端规则整理，属于原型模拟，不代表真实 AI 推理或客群调研。</p><p>产品配置、软件适配、价格库存、真实受众、门店展示与服务均需人工核实。</p>" + (d.opportunity ? "<strong>当前推广机会：" + esc(d.opportunity.title) + "</strong><p>" + esc(d.opportunity.description) + "</p><p>推荐理由：" + esc(d.opportunity.reason) + "</p><p>依据：" + esc(d.opportunity.evidence) + "</p><p>待确认：" + esc(d.opportunity.unknown) + "</p>" : "") + "</section></div></details></section><section class=\"mc-strategy-section\"><div class=\"mc-section-head\"><h2>主推推广方向</h2><span class=\"mc-muted\">规则推荐 · 原型模拟</span></div>" + lead + (alternatives.length ? "<details class=\"mc-alternatives\"><summary>查看其他方向</summary><div class=\"mc-alternative-list\">" + alternativeHtml + "</div>" + button("换一批备选方向", "shuffle", "mc-link") + "</details>" : "") + "<div class=\"mc-strategy-controls\"><div class=\"mc-adjust-row\"><label class=\"mc-field\"><span>调整当前方向</span><input id=\"strategy-adjustment\" value=\"" + "" + "\" placeholder=\"想调整什么？例如：更突出真实使用场景、少讲参数、表达得更自然……\"></label>" + button("调整方向", "adjust-strategy", "mc-secondary") + "</div><div class=\"mc-strategy-footer\"><p class=\"mc-muted\">如需其他角度，可展开备选方向。当前推荐和内容仍为有限规则模拟。</p></div></div></section></div>";
+    const lead = selected ? "<article class=\"mc-lead-strategy\">" + strategyImage(selected) + "<div class=\"mc-lead-copy\"><div class=\"mc-lead-status\"><span>AI 主推方向</span><span>规则模拟</span></div><h2>" + esc(selected.name) + "</h2><div class=\"mc-lead-block\"><span class=\"mc-lead-label\">" + icon("sparkles") + "方案说明</span><p class=\"mc-lead-idea\">" + esc(selected.coreIdea) + "</p></div><div class=\"mc-lead-block mc-lead-compliance\"><span class=\"mc-lead-label\">" + icon("shield-check") + "合规与待确认</span><ul><li>" + esc(selected.unknown) + "</li><li>" + esc(selected.executionAdvice || "发布前核对型号与官方资料；无法确认的内容如实说明。") + "</li>" + (d.complianceNotes || []).map(n => "<li class=\"mc-note-confirmed\">" + icon("check") + "<span>" + esc(n) + "（店员已确认）</span></li>").join("") + "</ul></div><div class=\"mc-creative-tags\"><span>" + esc(selected.expression) + "</span>" + (selected.platforms.length ? "<span>" + esc(selected.platforms.join(" / ")) + "</span>" : "") + "</div><details class=\"mc-creative-evidence\"><summary>查看推荐依据与待确认信息</summary><dl class=\"mc-definition\"><dt>当前有效依据</dt><dd>" + esc(Object.entries(selected.recommendationBasis || {}).map(([k, v]) => k + "：" + v).join("；")) + "</dd><dt>产品资料与来源</dt><dd>" + esc(selected.factBasis) + "</dd><dt>策略判断</dt><dd>" + esc(selected.evidence + " " + (selected.relation || "") + " " + (selected.executionAdvice || selected.plan || "")) + "</dd><dt>视觉建议</dt><dd>" + esc(selected.visualStyle + "。" + (selected.visualNote || "概念示意，不代表最终成图。")) + "</dd><dt>待人工确认</dt><dd>" + esc(selected.unknown + " " + (d.opportunity?.unknown || "")) + "</dd><dt>行动引导</dt><dd>" + esc(selected.cta) + "</dd></dl></details><div class=\"mc-lead-actions\">" + button("确认方向，生成推广图文", "generate", "mc-primary") + "</div></div></article>" : "<div class=\"mc-empty\"><p>暂时无法形成推荐方向，请返回需求引导补充一个关键信息。</p>" + button("返回需求引导", "guide", "mc-secondary") + "</div>";
+    return "<div class=\"mc-strategy-page\">" + steps(2) + pageHead("这次推广，我们建议这样做", "结合前面的需求，查看推荐主题与内容构想，确认后继续创作。", button("返回需求引导", "guide", "mc-secondary")) + geoContextCard() + "<section class=\"mc-task-brief\" aria-label=\"当前任务摘要\"><dl>" + fieldHtml + "</dl><p class=\"mc-brief-impact\">" + esc(impact) + "</p><details class=\"mc-task-details\"><summary>查看任务详情</summary><div class=\"mc-task-detail-grid\"><section><h3>任务与资料来源</h3><p>" + esc(d.prompt || "从推广机会开始探索") + "</p><p>" + esc(facts) + "</p><p>平台状态：" + (d.fieldStatus.platforms === "confirmed" ? "来自任务确认" : "尚未确认") + "。当前渠道：" + esc(d.fieldStatus.platforms === "confirmed" ? d.platforms.join(" / ") : "未指定（引导页建议可另行确认）") + "。</p>" + button("按需调整产品与渠道", "config", "mc-link") + "</section><section><h3>推断与待核实</h3><p>策略由当前有效任务状态和有限前端规则整理，属于原型模拟，不代表真实 AI 推理或客群调研。</p><p>产品配置、软件适配、价格库存、真实受众、门店展示与服务均需人工核实。</p>" + (d.opportunity ? "<strong>当前推广机会：" + esc(d.opportunity.title) + "</strong><p>" + esc(d.opportunity.description) + "</p><p>推荐理由：" + esc(d.opportunity.reason) + "</p><p>依据：" + esc(d.opportunity.evidence) + "</p><p>待确认：" + esc(d.opportunity.unknown) + "</p>" : "") + "</section></div></details></section><section class=\"mc-strategy-section\"><div class=\"mc-section-head\"><h2>主推推广方向</h2><span class=\"mc-muted\">规则推荐 · 原型模拟</span></div>" + lead + "<div class=\"mc-strategy-controls\"><div class=\"mc-compliance-coach\"><span class=\"mc-lead-label\">" + icon("sparkles") + "AI 引导 · 完善合规与待确认</span><p class=\"mc-coach-question\">" + (selected ? esc("还有信息待确认：" + selected.unknown + "如果已经核实，直接把结果告诉我，我会记入合规清单，生成内容时保留提醒。") : "") + "</p><div class=\"mc-adjust-row\"><label class=\"mc-field\"><span class=\"mc-sr-only\">记录核实结果</span><input id=\"compliance-note\" value=\"" + "" + "\" placeholder=\"例如：门店已有 MateBook 14 体验机，本周可约；价格已按最新海报核对……\"></label>" + button("记录核实结果", "add-compliance-note", "mc-secondary") + "</div><details class=\"mc-adjust-more\"><summary>想调整推广方向本身？</summary><div class=\"mc-adjust-row\"><label class=\"mc-field\"><span>调整当前方向</span><input id=\"strategy-adjustment\" value=\"" + "" + "\" placeholder=\"想调整什么？例如：更突出真实使用场景、少讲参数、表达得更自然……\"></label>" + button("调整方向", "adjust-strategy", "mc-secondary") + "</div></details></div><div class=\"mc-strategy-footer\"><p class=\"mc-muted\">当前推荐和内容仍为有限规则模拟。</p></div></div></section></div>";
   }
   function supportingContent() { return G.respectExclusions(supportingContentRaw(), state.draft.excludedScenes); }
   function supportingContentRaw() {
@@ -586,11 +903,54 @@
       return `<details ${value?.confirmed ? "" : "open"}><summary><span>${f.label}</span><span class="mc-fact-status ${value?.confirmed ? "confirmed" : ""}">${value?.confirmed ? "用户已确认" : "待确认"}</span></summary><label class="mc-field"><span class="sr-only">${f.label}核验备注</span><input data-fact-note="${f.id}" value="${esc(value?.note || "")}" placeholder="${f.placeholder}"></label>${button(value?.confirmed ? "修改并重新确认" : "我已核实并确认", "confirm-fact", "mc-link", `data-id="${f.id}"`)}</details>`;
     }).join("")}<div class="mc-expression"><strong>推广表达建议</strong><p>避免“最强”“保证”等绝对化表达；不将受众推断、演示产品资料当成核实事实。</p></div></section>`;
   }
+  // 知识库依据为演示结构：接入 ima 后由真实检索结果（事实点、资料标题、来源与命中片段）替换。
+  function knowledgeEvidence(d = state.draft, strategy = {}) {
+    const p = product();
+    const items = [];
+    if (p) items.push({ fact: p.facts[0] || p.name, title: `${p.name} · 产品名称与系列`, source: "原型演示目录（模拟知识库条目）", status: "supported" });
+    if (p?.facts?.[1]) items.push({ fact: p.facts[1], title: `${p.name} · 配置与适配资料`, source: "待 ima 知识库检索补充", status: "needs_confirmation" });
+    items.push({ fact: strategy.factBasis || "尚未形成产品事实依据", title: "策略事实依据", source: "当前任务上下文", status: !strategy.factBasis || /未核实|待核验|尚未/.test(strategy.factBasis) ? "needs_confirmation" : "supported" });
+    return items;
+  }
+  const complianceRules = [
+    { id: "absolute", label: "绝对化用语", pattern: /最[好强优划算新快高]|第一|顶级|极致|完美|全网最低|百分之百|100%|绝无仅有/g, advice: "改为可核实的具体描述，不用绝对化排名" },
+    { id: "promise", label: "效果或资质承诺", pattern: /保证|一定能|肯定能|永久|终身|包过|无效退款/g, advice: "删除承诺，或改为待确认的客观信息" },
+    { id: "price", label: "价格与促销表述", pattern: /[0-9]+\s*元|\d+(?:\.\d+)?\s*折|直降|限时|秒杀|补贴|优惠券|赠品/g, advice: "价格、优惠与补贴必须有资料依据，否则删除" },
+    { id: "compare", label: "无依据对比", pattern: /比.{1,12}(更好|更强|更快|更值得)|碾压|吊打|远超|领先所有/g, advice: "删除对比，或补充可核实的依据" },
+    { id: "rival", label: "竞品相关表述", pattern: /苹果(?!汁)|联想|Lenovo|戴尔|Dell|华硕|惠普|小米(?!粥)|荣耀/g, advice: "避免提及或贬低竞品，不引用无法核实的竞品信息" }
+  ];
+  function complianceScan(title = "", body = "") {
+    const text = `${title}\n${body}`;
+    return complianceRules.map(rule => ({ id: rule.id, label: rule.label, advice: rule.advice, hits: [...new Set(text.match(rule.pattern) || [])] }));
+  }
+  function evidencePanelHtml() {
+    const items = knowledgeEvidence();
+    const statusLabel = { supported: "有依据", needs_confirmation: "待核实" };
+    return `<details class="mc-result-evidence"><summary>知识库依据（模拟检索）</summary><p class="mc-muted">演示结构：接入 ima 知识库后，此面板替换为真实检索结果（事实点、资料标题、来源与命中片段）。</p><ul class="mc-evidence-list">${items.map(item => `<li><span class="mc-fact-status ${item.status === "supported" ? "confirmed" : ""}">${statusLabel[item.status]}</span><strong>${esc(item.title)}</strong><p>${esc(item.fact)}</p><small>来源：${esc(item.source)}</small></li>`).join("")}</ul></details>`;
+  }
+  function compliancePanelHtml() {
+    const scan = complianceScan(oSafeTitle(), oSafeBody());
+    const flagged = scan.filter(rule => rule.hits.length);
+    return `<details class="mc-result-compliance"><summary>合规检查（规则模拟） · ${flagged.length ? `发现 ${flagged.length} 类需复核表述` : "未检出常见风险表述"}</summary><p class="mc-muted">规则模拟扫描：绝对化用语、虚假承诺、价格误导、无依据对比与竞品表述。接入真实核查后替换为服务端结果。</p><ul class="mc-compliance-list">${scan.map(rule => `<li class="${rule.hits.length ? "is-flagged" : "is-passed"}"><strong>${esc(rule.label)}</strong>${rule.hits.length ? `<span>命中：${rule.hits.map(esc).join("、")}</span><em>${esc(rule.advice)}</em>` : "<span>未检出</span>"}</li>`).join("")}</ul></details>`;
+  }
+  function oSafeTitle() { const o = state.draft.outputs[state.draft.activePlatform]; return o ? o.title : ""; }
+  function oSafeBody() { const o = state.draft.outputs[state.draft.activePlatform]; return o ? o.body : ""; }
+  function refreshCompliance() {
+    try {
+      const el = document.querySelector(".mc-result-compliance");
+      if (!el || typeof el.hasAttribute !== "function") return;
+      const open = el.hasAttribute("open");
+      el.outerHTML = compliancePanelHtml();
+      const next = document.querySelector(".mc-result-compliance");
+      if (open && next && typeof next.setAttribute === "function") next.setAttribute("open", "");
+    } catch { /* 模拟 DOM 或无面板时跳过实时刷新，重新渲染时仍会更新 */ }
+  }
   function results() {
     const d = state.draft;
     if (!d.outputs[d.activePlatform]) d.activePlatform = Object.keys(d.outputs)[0];
     const o = d.outputs[d.activePlatform];
-    const images = ensureOutputMedia(o);
+    const images = ensureOutputMedia(o, d.activePlatform);
+    if (o.imageMode !== "multi") makeMultiImage(o, d.activePlatform);
     const activeImage = images.find(image => image.id === o.activeImageId) || images[0];
     syncOutputImage(o, activeImage);
     const strategy = o.strategy || selectedStrategy() || {};
@@ -601,53 +961,125 @@
       ["产品", product()?.name || "暂不指定型号"],
       ["发布平台", d.activePlatform === "通用草稿" ? "未指定 · 通用图文" : d.activePlatform]
     ];
-    const visual = visualAssets[activeImage.visualKind] || visualAssets.scene;
+    const visual = assetOf(activeImage.visualKind) || visualAssets.scene;
     const changed = o.edited || o.imageEdited || o.copyEdited || o.visualTextEdited;
     const status = changed ? "已修改 · 待人工核验" : "初稿 · 待人工核验";
-    const imageChoices = Object.entries(visualAssets).map(([kind, item]) => {
+    if (!o.candidates) o.candidates = Object.keys(candidateAssets);
+    const imageChoices = o.candidates.map(kind => {
+      const item = assetOf(kind);
+      if (!item) return "";
       const usedElsewhere = images.some(image => image.id !== activeImage.id && image.visualKind === kind);
-      return `<button type="button" class="mc-image-choice ${activeImage.visualKind === kind ? "is-selected" : ""}" data-action="choose-image" data-id="${kind}" aria-pressed="${activeImage.visualKind === kind}"><img src="${item.src}" alt="${esc(item.alt)}"><span>${esc(item.label)}${usedElsewhere ? " · 与该图交换素材" : ""}</span></button>`;
+      return `<button type="button" class="mc-image-choice ${activeImage.visualKind === kind ? "is-selected" : ""}" data-action="choose-image" data-id="${kind}" aria-pressed="${activeImage.visualKind === kind}"><img src="${item.src}" alt="${esc(item.alt)}"><span>${esc(item.label)}${usedElsewhere ? " · 与该图交换" : ""}</span></button>`;
     }).join("");
     const thumbs = (o.imageMode === "multi" ? images : []).map((image, index) => `<button type="button" class="mc-result-thumb ${image.id === activeImage.id ? "is-selected" : ""}" data-action="select-result-image" data-id="${esc(image.id)}" aria-label="查看第 ${index + 1} 张图片"><img src="${esc(image.visualSrc)}" alt="${esc(image.visualAlt || image.visualLabel)}"><span>${index + 1}</span></button>`).join("");
     const platformSelect = `<label class="mc-result-platform-select"><span>发布预览平台</span><select id="result-platform-select">${[...new Set(["通用草稿", ...Object.keys(d.outputs), ...platforms])].map(p => `<option value="${esc(p)}" ${p === d.activePlatform ? "selected" : ""}>${esc(p)}</option>`).join("")}</select></label>`;
     return `<div class="mc-results-page">${steps(3)}${pageHead("推广成果工作台", "查看作品，编辑图文，确认后复制或导出。", button("返回调整策略", "analysis", "mc-secondary"))}
       <section class="mc-result-summary" aria-label="当前推广任务"><div>${summary.map(([label, value]) => `<div><span>${label}</span><strong>${esc(value)}</strong></div>`).join("")}</div><span class="mc-result-status">${status}</span></section>
-      <div class="mc-results-workbench"><div class="mc-result-art-column">
-        <section class="mc-panel mc-result-artwork"><div class="mc-panel-heading"><div><h2>当前推广作品</h2><p class="mc-muted">${o.imageMode === "multi" ? `第 ${images.findIndex(image => image.id === activeImage.id) + 1} / ${images.length} 张` : "单图作品"} · ${esc(d.activePlatform === "通用草稿" ? "通用图文" : d.activePlatform)}</p></div>${button("放大图片", "preview-image", "mc-link")}</div>
-          <article class="mc-publication-preview" data-platform="${esc(d.activePlatform)}" aria-label="完整图文预览"><div class="mc-preview-heading"><h3>${esc(activeImage.role || "封面")} · ${esc(activeImage.visualLabel || visual.label)}</h3><span>本地演示素材</span></div><div class="mc-publication-card">
-          <div class="mc-result-poster" data-result-preview data-layout="${esc(o.layout || "scene")}"><img data-result-image data-publication-image src="${esc(activeImage.visualSrc || visual.src)}" alt="${esc(activeImage.visualAlt || visual.alt)}" width="800" height="600" decoding="async"><div class="mc-result-poster-copy"><span data-result-visual-label>${esc(activeImage.visualLabel || visual.label)} · 概念示意</span><strong data-result-visual-headline data-publication-headline>${esc(activeImage.visualHeadline || strategy.previewTitle || strategy.name || "推广内容构想")}</strong><small data-result-visual-subline data-publication-subline>${esc(activeImage.visualSubline || strategy.previewNote || "围绕当前推广方向组织画面")}</small></div><span class="mc-result-image-note">本地演示插画 · 非指定型号实拍</span><span class="mc-preview-fallback" hidden></span></div>
-          <div class="mc-publication-copy"><strong data-publication-title>${esc(o.title)}</strong><p data-publication-body>${esc(o.body)}</p><span data-publication-cta>${esc(o.cta && !o.body.includes(o.cta) ? o.cta : "")}</span></div></div></article>
-          ${thumbs ? `<div class="mc-result-thumbnails" aria-label="图片序列">${thumbs}</div>` : ""}
-          <div class="mc-artwork-actions">${button(o.imageMode === "multi" ? "添加一张图片" : "添加为多图作品", o.imageMode === "multi" ? "add-result-image" : "toggle-image-mode", "mc-secondary")}${o.imageMode === "multi" ? `${button("切换为单图", "toggle-image-mode", "mc-link")}${button("上移当前图", "move-image-up", "mc-link")}${button("下移当前图", "move-image-down", "mc-link")}${button("删除当前图", "remove-result-image", "mc-link")}` : ""}</div>
+      <div class="mc-results-workbench">
+        <section class="mc-result-stage" aria-label="当前推广作品"><div class="mc-stage-head"><div><h2>当前推广作品</h2><p class="mc-muted">第 ${images.findIndex(image => image.id === activeImage.id) + 1} / ${images.length} 张 · ${esc(d.activePlatform === "通用草稿" ? "通用图文" : d.activePlatform)}</p></div>${button("放大图片", "preview-image", "mc-link")}</div>
+          <article class="mc-publication-preview" data-platform="${esc(d.activePlatform)}" aria-label="图片预览"><div class="mc-preview-heading"><h3>${esc(activeImage.role || "封面")} · ${esc(activeImage.visualLabel || visual.label)}</h3><span>本地演示素材</span></div><div class="mc-publication-card">
+          <div class="mc-result-poster" data-result-preview data-layout="${esc(o.layout || "scene")}"><img data-result-image data-publication-image src="${esc(activeImage.visualSrc || visual.src)}" alt="${esc(activeImage.visualAlt || visual.alt)}" width="800" height="600" decoding="async"><div class="mc-result-poster-copy"><span data-result-visual-label>${esc(activeImage.visualLabel || visual.label)} · 概念示意</span><input id="output-visual-headline" class="mc-poster-headline" data-result-visual-headline data-publication-headline value="${esc(activeImage.visualHeadline || strategy.previewTitle || strategy.name || "推广内容构想")}" aria-label="图片主标题（点击直接编辑）" placeholder="图片主标题"><input id="output-visual-subline" class="mc-poster-subline" data-result-visual-subline data-publication-subline value="${esc(activeImage.visualSubline || strategy.previewNote || "围绕当前推广方向组织画面")}" aria-label="图片副标题（点击直接编辑）" placeholder="图片副标题（可选）"></div><span class="mc-result-image-note">本地演示插画 · 非指定型号实拍 · 图上文字可直接点击编辑</span><span class="mc-preview-fallback" hidden></span></div></div></article>
+          ${thumbs ? `<div class="mc-result-thumbnails" aria-label="图片序列"><div class="mc-slider-track">${thumbs}</div></div>` : ""}
+          <div class="mc-artwork-actions">${button("添加一张图片", "add-result-image", "mc-secondary")}${button("上移当前图", "move-image-up", "mc-link")}${button("下移当前图", "move-image-down", "mc-link")}${button("删除当前图", "remove-result-image", "mc-link")}</div>
+          <div class="mc-stage-replace"><h3>AI 生成备选</h3><p class="mc-muted">生成图片时已一并产出备选，点击即可替换“${esc(activeImage.role || "当前图")}”，不改动其他图片与文案。</p><div class="mc-image-options" role="group" aria-label="AI 生成备选图">${imageChoices}</div><p class="mc-muted">前端模拟生成 · 概念插画，不是华为具体型号实拍。</p></div>
+          <details class="mc-image-plan"><summary>配图方案 · 来源与插入位置（演示）</summary><p class="mc-muted">${esc(d.activePlatform === "通用草稿" ? "通用草稿" : d.activePlatform)}：${esc(platformSpec(d.activePlatform).structure)}；建议配图 ${esc(platformSpec(d.activePlatform).imageLabel)}。当前 ${images.length} 张${platformSpec(d.activePlatform).poster ? "，海报仅使用主视觉 1 张，不拉伸或错配型号" : "，可添加为多图作品"}。</p><ul>${images.map((image, index) => `<li><strong>${index + 1}. ${esc(image.role || "配图")}</strong><span>来源：${esc(image.source)}</span><span>说明：${esc(image.caption)}</span><span>建议插入位置：${esc(image.position)}</span></li>`).join("")}</ul></details>
         </section>
-      </div><div class="mc-result-edit-column">
-        <section class="mc-panel mc-editor"><div class="mc-panel-heading"><h2>修改文案</h2>${button("重新生成图文", "open-regenerate", "mc-link")}</div>
-          <div class="mc-result-edit-top"><div class="mc-result-image-actions">${button("替换当前图片", "toggle-materials", "mc-primary")}</div></div>
-          
-          <label class="mc-field mc-title-field"><span>发布标题</span><input id="output-title" value="${esc(o.title)}"></label>
-          <label class="mc-field mc-body-field"><span>${d.activePlatform === "视频号" ? "口播与镜头脚本" : "发布正文"}</span><textarea id="output-body" rows="8">${esc(o.body)}</textarea></label>
-          <details class="mc-image-text-fields"><summary>图片内文字与行动引导</summary><div><label class="mc-field"><span>当前图片主标题</span><input id="output-visual-headline" value="${esc(activeImage.visualHeadline || "")}"></label><label class="mc-field"><span>图片副标题（可选）</span><input id="output-visual-subline" value="${esc(activeImage.visualSubline || "")}"></label><label class="mc-field"><span>顾客行动引导</span><input id="output-cta" value="${esc(o.cta || "")}"></label></div></details>
-          <div class="mc-editor-meta"><span id="output-count">${o.body.length} 字</span><span>编辑保存在当前浏览器，预览同步更新</span></div>
-          ${d.previousOutputs ? button("撤销重新生成", "undo-regenerate", "mc-link") : ""}${o.previousCopy ? button("撤销文案重生成", "undo-copy", "mc-link") : ""}
-          <details class="mc-result-advanced"><summary>平台、局部调整与恢复</summary>${platformSelect}<div class="mc-editor-tools">${button("优化标题", "improve-title", "mc-secondary")}${button("缩短内容", "shorten", "mc-secondary")}${button("恢复初稿", "restore-draft", "mc-secondary", o.initial ? "" : "disabled")}${o.previousBody !== undefined ? button("恢复修改前正文", "restore-body", "mc-secondary") : ""}${button("整体重新生成", "regenerate", "mc-link")}</div>
+        <section class="mc-panel mc-result-copy" aria-label="发布文案">
+        <div class="mc-pane-bar"><div><h3>发布文案</h3><p class="mc-muted mc-regen-note">「重新生成图文」可选择整套图文、仅图片或仅文案，生成后可撤销，未选范围内的手动修改保留。</p></div>${button("重新生成图文…", "open-regenerate", "mc-link")}</div>
+          <div class="mc-doc-editor">
+            <input id="output-title" class="mc-doc-title" value="${esc(o.title)}" aria-label="发布标题" placeholder="发布标题">
+            <textarea id="output-body" class="mc-doc-body" rows="6" aria-label="${d.activePlatform === "视频号" ? "口播与镜头脚本" : "发布正文"}">${esc(o.body)}</textarea>
+            <div class="mc-editor-meta"><span id="output-count">${o.body.length} 字</span><span>自动保存在当前浏览器，预览同步更新</span></div>
+          </div>
+          ${d.previousOutputs || o.previousCopy ? `<div class="mc-copy-undo">${d.previousOutputs ? button("撤销重新生成", "undo-regenerate", "mc-link") : ""}${o.previousCopy ? button("撤销文案重生成", "undo-copy", "mc-link") : ""}</div>` : ""}
+          <div class="mc-delivery">${button("复制文案", "copy", "mc-primary")}<div class="mc-delivery-secondary">${button(`${icon("download")} 下载图片 SVG`, "download-poster", "mc-link")}${button("导出图文说明 MD", "export", "mc-link")}<details class="mc-copy-options"><summary>更多</summary>${button("复制完整图文说明", "copy-all", "mc-link")}</details></div></div>
+          <details class="mc-fold mc-result-advanced"><summary>平台、行动引导与局部调整</summary>${platformSelect}<label class="mc-field"><span>顾客行动引导（正文未包含时，复制/导出自动附加在结尾）</span><input id="output-cta" value="${esc(o.cta || "")}"></label><div class="mc-editor-tools">${button("优化标题", "improve-title", "mc-secondary")}${button("缩短内容", "shorten", "mc-secondary")}${button("恢复初稿", "restore-draft", "mc-secondary", o.initial ? "" : "disabled")}${o.previousBody !== undefined ? button("恢复修改前正文", "restore-body", "mc-secondary") : ""}${button("整体重新生成", "regenerate", "mc-link")}</div>
           <label class="mc-field mc-result-adjustment"><span>局部调整</span><textarea id="result-requirement" rows="2" placeholder="例如：更简洁、不提价格、加入差旅场景">${esc(d.adjustment)}</textarea></label>
           <label class="mc-field"><span>内容语气</span><select id="result-tone">${["自然真诚", "简洁专业", "轻松亲切"].map(t => `<option ${o.tone === t ? "selected" : ""}>${t}</option>`).join("")}</select></label>
           ${button("按要求调整正文", "update-output", "mc-secondary")}<p class="mc-muted">仅执行当前支持的明确规则；其他要求作为备注保留，不会用模板覆盖手写正文。</p>
           ${button("更换推广角度", "change-angle", "mc-link")}</details>
-          <div class="mc-delivery">${button("复制文案", "copy", "mc-link")}${button(`${icon("download")} 下载当前图片 SVG`, "download-poster", "mc-secondary")}${button("导出图文说明 MD", "export", "mc-secondary")}<details class="mc-copy-options"><summary>更多复制</summary>${button("复制完整图文说明", "copy-all", "mc-link")}</details></div>
-          <details class="mc-result-fact-details"><summary>有信息待确认 · 查看核验详情</summary><p class="mc-muted">参数、价格、优惠、库存及门店服务未经自动核验，不作确定承诺。</p><p class="mc-muted mc-result-visual-context">当前视觉方向：${esc(strategy.visualStyle || "待确认")}。页面中的图片为本地概念示意，不代表指定型号实拍。</p>${factsPanel()}</details>
+          <details class="mc-fold mc-checks"><summary>内容校验（模拟） · 合规${complianceScan(o.title, o.body).filter(rule => rule.hits.length).length ? `发现 ${complianceScan(o.title, o.body).filter(rule => rule.hits.length).length} 类待复核` : "未检出风险"} · 依据 ${knowledgeEvidence().length} 条 · ${factItems.filter(f => !d.facts[f.id]?.confirmed).length ? `${factItems.filter(f => !d.facts[f.id]?.confirmed).length} 项待确认` : "信息已确认"}</summary><p class="mc-muted">以下规则扫描与检索均为前端模拟，不代表真实合规审查或真实知识库结果。</p><div class="mc-checks-body">${evidencePanelHtml()}${compliancePanelHtml()}<details class="mc-result-fact-details"><summary>有信息待确认 · 查看核验详情</summary><p class="mc-muted">参数、价格、优惠、库存及门店服务未经自动核验，不作确定承诺。</p><p class="mc-muted mc-result-visual-context">当前视觉方向：${esc(strategy.visualStyle || "待确认")}。页面中的图片为本地概念示意，不代表指定型号实拍。</p>${factsPanel()}</details></div></details>
         </section>
-      </div></div>
+      </div>
       <dialog class="mc-regenerate-dialog" aria-labelledby="mc-regenerate-title"><div class="mc-dialog-heading"><h2 id="mc-regenerate-title">重新生成</h2>${button("关闭", "close-regenerate", "mc-link")}</div><p>所选范围内的手动修改会被替换；范围外内容保留，生成后可撤销。</p><fieldset><legend>生成范围</legend><label><input type="radio" name="regenerate-scope" value="all" checked>整套图文</label><label><input type="radio" name="regenerate-scope" value="image">仅当前图片</label><label><input type="radio" name="regenerate-scope" value="copy">仅文案</label></fieldset><label class="mc-field"><span>调整方向</span><select id="regenerate-direction"><option value="default">沿用当前方向，换一版表达</option><option value="scene">更突出使用场景</option><option value="concise">整体更简洁</option><option value="warm">表达更自然亲切</option></select></label><div class="mc-dialog-actions">${button("取消", "close-regenerate", "mc-secondary")}${button("确认重新生成", "confirm-regenerate", "mc-primary")}</div><p class="mc-muted">前端模拟生成，不调用真实 AI。重新生成可撤销。</p></dialog>
-      <dialog class="mc-image-picker-dialog" aria-labelledby="mc-image-picker-title"><div class="mc-dialog-heading"><h2 id="mc-image-picker-title">替换当前图片</h2>${button("关闭", "close-image-picker", "mc-link")}</div><p>只替换“${esc(activeImage.role || "当前图")}”，不改动其他图片与文案。</p><div class="mc-image-options" role="group" aria-label="本地概念素材">${imageChoices}</div><p class="mc-muted">本地演示素材 · 通用插画，不是华为具体型号实拍。</p></dialog>
       </div>`;
   }
   function settings() {
     const s = state.store;
-    return `${pageHead("门店设置", "只填写你了解的信息。本地推广机会会保留推断与待验证边界。")}<form id="store-form" class="mc-panel mc-settings"><h2>门店基础信息</h2><label class="mc-field"><span>门店位置或商圈</span><input name="location" value="${esc(s.location)}" placeholder="填写实际位置，例如：杭州市某商圈" maxlength="200"></label><label class="mc-field"><span>附近地标</span><input name="landmarks" value="${esc(s.landmarks)}" placeholder="例如：附近高校、写字楼或商业中心" maxlength="250"></label><label class="mc-field"><span>主要目标客群</span><input name="audience" value="${esc(s.audience)}" placeholder="由门店实际观察填写，可留空" maxlength="250"></label><fieldset><legend>常用推广平台</legend><div class="mc-choice-row">${platforms.map(p => `<label class="mc-checkbox"><input type="checkbox" name="platforms" value="${p}" ${s.platforms.includes(p) ? "checked" : ""}>${p}</label>`).join("")}</div></fieldset><p class="mc-muted">信息保存在当前浏览器，不会自动上传，也不会据此认定实际客群。</p><div class="mc-settings-footer"><button class="mc-primary" type="submit">保存门店信息</button>${button("返回首页", "home", "mc-secondary")}</div></form>`;
+    return `${pageHead("门店设置", "只填写你了解的信息。本地推广机会会保留推断与待验证边界。")}<form id="store-form" class="mc-panel mc-settings"><h2>门店基础信息</h2><label class="mc-field"><span>门店位置或商圈</span><input name="location" value="${esc(s.location)}" placeholder="填写实际位置，例如：杭州市某商圈" maxlength="200"></label><label class="mc-field"><span>附近地标</span><input name="landmarks" value="${esc(s.landmarks)}" placeholder="例如：附近高校、写字楼或商业中心" maxlength="250"></label><label class="mc-field"><span>主要目标客群</span><input name="audience" value="${esc(s.audience)}" placeholder="由门店实际观察填写，可留空" maxlength="250"></label><fieldset><legend>常用推广平台</legend><div class="mc-choice-row">${platforms.map(p => `<label class="mc-checkbox"><input type="checkbox" name="platforms" value="${p}" ${s.platforms.includes(p) ? "checked" : ""}>${p}</label>`).join("")}</div></fieldset><p class="mc-muted">信息保存在当前浏览器，不会自动上传，也不会据此认定实际客群。地图选址的正式流程在「推广机会 · 周边场景」中完成（搜索门店 → 周边分布 → 围绕这里策划）。</p><div class="mc-settings-footer"><button class="mc-primary" type="submit">保存门店信息</button>${button("返回首页", "home", "mc-secondary")}</div></form>`;
   }
   function historyPage() {
     return `${pageHead("创作记录", "保存在当前浏览器的草稿，可继续编辑或导出。", button("开始新创作", "new", "mc-primary"))}${state.history.length ? `<section class="mc-panel mc-history-list"><h2>${state.history.length} 份本地草稿</h2>${state.history.map(r => `<article class="mc-history-row"><div><span class="mc-tag">${esc(D.tasks.find(t => t.id === r.draft.task)?.name)}</span><h3>${esc(Object.values(r.draft.outputs)[0]?.title || "未命名草稿")}</h3><p>${esc(D.products.find(p => p.id === r.draft.product)?.name || "暂不指定型号")} · ${esc(r.draft.platforms.join(" / "))}</p><small>${esc(new Date(r.updatedAt).toLocaleString("zh-CN"))} · 模拟成果</small></div><div class="mc-history-actions">${button("继续编辑", "open-record", "mc-secondary", `data-id="${esc(r.id)}"`)}${button("删除", "delete-record", "mc-link mc-history-delete", `data-id="${esc(r.id)}" aria-label="删除记录：${esc(Object.values(r.draft.outputs)[0]?.title || "未命名草稿")}"`)}</div></article>`).join("")}</section>` : `<div class="mc-empty"><h2>还没有创作草稿</h2><p>完成一次推广创作后，成果会自动保存在这里。</p>${button("开始第一次创作", "home", "mc-primary")}</div>`}`;
+  }
+  function initResultSlider() {
+    const viewport = typeof document !== "undefined" && document.querySelector ? document.querySelector(".mc-result-thumbnails") : null;
+    if (!viewport || typeof viewport.querySelectorAll !== "function" || !viewport.addEventListener) return;
+    const track = viewport.querySelector(".mc-slider-track");
+    const items = track && track.querySelectorAll ? Array.from(track.querySelectorAll(".mc-result-thumb")) : [];
+    if (!track || !items.length) return;
+    viewport.classList.add("mc-slider");
+    const reduce = typeof window !== "undefined" && window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const current = Math.max(0, items.findIndex(el => el.classList.contains("is-selected")));
+    const baseX = i => viewport.clientWidth / 2 - (items[i].offsetLeft + items[i].offsetWidth / 2);
+    const minX = () => baseX(items.length - 1), maxX = () => baseX(0);
+    let x = baseX(current), startX = 0, startBase = x, dragging = false, moved = false;
+    const clampX = val => {
+      if (val > maxX()) return maxX() + (val - maxX()) * 0.35;
+      if (val < minX()) return minX() + (val - minX()) * 0.35;
+      return val;
+    };
+    const apply = (val, animate) => {
+      track.style.transition = animate && !reduce ? "transform .42s cubic-bezier(.22,.8,.3,1)" : "none";
+      track.style.transform = `translateX(${val}px)`;
+      items.forEach((el, i) => {
+        const center = items[i].offsetLeft + items[i].offsetWidth / 2 + val - viewport.clientWidth / 2;
+        const ratio = Math.max(-1, Math.min(1, center / (viewport.clientWidth * 0.75)));
+        const img = el.querySelector("img");
+        if (img && !reduce) img.style.transform = `translateX(${(-ratio * 24).toFixed(1)}px) scale(1.14)`;
+        el.style.opacity = String(1 - Math.min(0.45, Math.abs(ratio) * 0.5));
+        el.style.transform = `scale(${(1 - Math.min(0.08, Math.abs(ratio) * 0.1)).toFixed(3)})`;
+      });
+    };
+    const snap = () => {
+      let best = 0, dist = Infinity;
+      for (let i = 0; i < items.length; i++) { const dX = Math.abs(baseX(i) - x); if (dX < dist) { dist = dX; best = i; } }
+      x = baseX(best); apply(x, true);
+      if (best !== current) items[best].click();
+    };
+    apply(x, false);
+    viewport.addEventListener("pointerdown", e => {
+      dragging = true; moved = false; startX = e.clientX; startBase = x;
+      viewport.classList.add("is-dragging");
+      if (viewport.setPointerCapture) { try { viewport.setPointerCapture(e.pointerId); } catch (err) { /* noop */ } }
+    });
+    viewport.addEventListener("pointermove", e => {
+      if (!dragging) return;
+      const dx = e.clientX - startX;
+      if (Math.abs(dx) > 6) moved = true;
+      x = clampX(startBase + dx); apply(x, false);
+    });
+    const finish = e => {
+      if (!dragging) return;
+      dragging = false; viewport.classList.remove("is-dragging");
+      if (!moved && e && typeof e.clientX === "number") {
+        let thumb = typeof document.elementFromPoint === "function" ? document.elementFromPoint(e.clientX, e.clientY)?.closest?.(".mc-result-thumb") : null;
+        if (!thumb && e.target?.closest) thumb = e.target.closest(".mc-result-thumb");
+        if (!thumb) thumb = items.find(el => { const r = el.getBoundingClientRect(); return e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom; });
+        if (thumb && items.includes(thumb)) { snap(); thumb.click(); return; }
+      }
+      snap();
+    };
+    viewport.addEventListener("pointerup", finish);
+    viewport.addEventListener("pointercancel", finish);
+    viewport.addEventListener("click", e => { if (moved) { e.preventDefault(); e.stopPropagation(); moved = false; } }, true);
+    viewport.addEventListener("wheel", e => {
+      const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+      if (!delta) return;
+      e.preventDefault();
+      x = clampX(x - delta * 0.9); apply(x, false);
+      clearTimeout(viewport._snapTimer);
+      viewport._snapTimer = setTimeout(snap, 160);
+    }, { passive: false });
   }
   function render() {
     const home = state.page === "home";
@@ -669,7 +1101,25 @@
       if (img.complete && !img.naturalWidth) showFallback();
     });
     document.querySelectorAll("i[data-lucide]").forEach(el => { el.outerHTML = icon(el.dataset.lucide); });
-    if (state.page === "guide") { const log = $(".mc-transcript"); if (log) log.scrollTop = log.scrollHeight; }
+    initResultSlider();
+    if (state.page === "guide") {
+      const n = state.guide && state.guide.events ? state.guide.events.length : 0;
+      if (lastGuideEvents !== null && n > lastGuideEvents && typeof window !== "undefined" && typeof window.scrollTo === "function") {
+        const run = () => {
+          const de = document.documentElement || document.body;
+          const f = typeof document.getElementById === "function" ? document.getElementById("guide-compose") : null;
+          if (f && typeof f.getBoundingClientRect === "function" && typeof f.offsetHeight === "number") {
+            const top = f.getBoundingClientRect().top + (window.scrollY || 0) - (window.innerHeight || 0) + f.offsetHeight + 20;
+            window.scrollTo({ top: Math.max(0, Math.min(top, de ? de.scrollHeight : top)), behavior: "smooth" });
+          } else {
+            window.scrollTo({ top: de ? de.scrollHeight : 0, behavior: "smooth" });
+          }
+        };
+        run();
+        if (typeof setTimeout === "function") setTimeout(run, 400);
+      }
+      lastGuideEvents = n;
+    }
     const view = home ? $("#mc-create-page") : $("#mc-work-page");
     view.classList.remove("mc-enter"); void view.offsetWidth; view.classList.add("mc-enter");
   }
@@ -706,7 +1156,7 @@
     const o = currentOutput();
     const image = outputImages(o).find(item => item.id === o.activeImageId);
     const fields = { "[data-publication-title]": o.title, "[data-publication-body]": o.body, "[data-publication-cta]": o.cta && !o.body.includes(o.cta) ? o.cta : "", "[data-result-visual-headline]": image?.visualHeadline || "", "[data-publication-headline]": image?.visualHeadline || "", "[data-result-visual-subline]": image?.visualSubline || "", "[data-publication-subline]": image?.visualSubline || "", ".mc-result-status": "已修改 · 待人工核验" };
-    Object.entries(fields).forEach(([selector, text]) => { const node = $(selector); if (node) node.textContent = text || ""; });
+    Object.entries(fields).forEach(([selector, text]) => { const node = $(selector); if (!node) return; if ("value" in node && (node.tagName === "INPUT" || node.tagName === "TEXTAREA")) { if (document.activeElement !== node) node.value = text || ""; } else node.textContent = text || ""; });
   }
   function publicationText(o, includeTitle = true, includeAction = true) {
     return [includeTitle ? o.title : "", o.body, includeAction && o.cta && !o.body.includes(o.cta) ? o.cta : ""].filter(Boolean).join("\n\n");
@@ -715,7 +1165,10 @@
     const d = state.draft;
     const outputs = Object.entries(d.outputs).map(([p, o]) => `## ${p}\n\n${publicationText(o)}\n\n图片主标题：${o.visualHeadline || "未填写"}\n图片副标题：${o.visualSubline || "未填写"}\n素材：${o.visualLabel || "使用场景"}（${o.visualSrc || visualAssets.scene.src}）\n素材说明：${o.visualNote || "本地演示素材，非指定型号实拍"}\n视觉方向：${o.strategy?.visualStyle || "待确认"}${o.requirementNote ? `\n\n编辑备注（待人工落实）：${o.requirementNote}` : ""}`).join("\n\n");
     const notes = factItems.map(f => `${f.label}：${d.facts[f.id]?.confirmed ? "用户已确认" : "待确认"}；${d.facts[f.id]?.note || "暂无核验备注"}`).join("\n");
-    return `# ${task().deliverable} · 模拟草稿\n\n产品：${product()?.name || "华为 PC 选购"}\n策略：${selectedStrategy()?.name || "已选方向"}\n${d.opportunity ? `机会：${d.opportunity.title}\n依据：${d.opportunity.evidence}\n` : ""}\n${outputs}\n\n## 配套内容\n${supportingContent().replace(/<[^>]*>/g, "\n").replace(/\n{3,}/g, "\n\n")}\n\n## 事实核验\n${notes}\n\n演示草稿，未自动发布。产品参数与门店服务需人工核实。`;
+    const evidence = knowledgeEvidence().map(item => `${item.title}｜${item.fact}（来源：${item.source}；${item.status === "supported" ? "有依据" : "待核实"}）`).join("\n");
+    const activeOutput = d.outputs[d.activePlatform];
+    const compliance = complianceScan(activeOutput?.title, activeOutput?.body).map(rule => `${rule.label}：${rule.hits.length ? `命中 ${rule.hits.join("、")}；建议${rule.advice}` : "未检出"}`).join("\n");
+    return `# ${task().deliverable} · 模拟草稿\n\n产品：${product()?.name || "华为 PC 选购"}\n策略：${selectedStrategy()?.name || "已选方向"}\n${d.opportunity ? `机会：${d.opportunity.title}\n依据：${d.opportunity.evidence}\n` : ""}\n${outputs}\n\n## 配套内容\n${supportingContent().replace(/<[^>]*>/g, "\n").replace(/\n{3,}/g, "\n\n")}\n\n## 知识库依据（模拟检索）\n${evidence}\n\n## 合规检查（规则模拟）\n${compliance}\n\n## 事实核验\n${notes}\n\n演示草稿，未自动发布。产品参数与门店服务需人工核实。`;
   }
   async function copy(all = false) {
     const o = currentOutput(), text = all ? fullText() : publicationText(o, true, false);
@@ -805,6 +1258,9 @@
     } finally { region.removeAttribute("aria-busy"); switchingOpportunity = false; }
   }
   document.addEventListener("click", async e => {
+    if (homePlatformMenuOpen && !(e.target.closest && e.target.closest(".mc-platform-picker"))) {
+      homePlatformMenuOpen = false; renderHomePlatforms();
+    }
     const nav = e.target.closest("[data-page]");
     if (nav) {
       if (nav.dataset.page === "opportunities") { state.opportunityExplorer.activeView = ""; state.opportunityExplorer.selectedOpportunity = ""; }
@@ -815,6 +1271,19 @@
     if (routes.includes(a)) {
       if (a === "opportunities") { state.opportunityExplorer.activeView = ""; state.opportunityExplorer.selectedOpportunity = ""; }
       return navigate(a);
+    }
+    if (a === "scroll-rec") {
+      const target = $("#mc-gallery");
+      if (target) target.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
+      return;
+    }
+    if (a === "side-collapse") {
+      const app = $(".mc-app");
+      if (!app) return;
+      const collapsed = app.classList.toggle("collapsed");
+      el.setAttribute("aria-label", collapsed ? "展开侧边栏" : "收起侧边栏");
+      try { localStorage.setItem("mc-side-collapsed", collapsed ? "1" : ""); } catch { /* 私有模式下忽略 */ }
+      return;
     }
     if (a === "home-product-select" || a === "home-product-remove" || a === "home-product-defer") {
       if (a === "home-product-select" && !D.products.some(p => p.id === id)) return;
@@ -829,7 +1298,8 @@
     }
     if (a.startsWith("guide-")) {
       const g = ensureGuide(), c = guideContext();
-      if (a === "guide-confirm-current") addGuideChoice("确认沿用当前需求摘要；未识别补充不自动执行", { clarification: "" });
+      if (a === "guide-suggest" || a === "guide-prefill") { const gg = ensureGuide(); const text = el.dataset.text || ""; if (text) { gg.composer = gg.composer && gg.composer.trim() ? gg.composer.replace(/\s+$/, "") + "，" + text : text; } save(); render(); const input = $("#guide-input"); if (input) { input.focus(); input.setSelectionRange(input.value.length, input.value.length); } return; }
+      if (a === "guide-confirm-current") addGuideChoice("就按现在的需求摘要来", { clarification: "" });
       if (a === "guide-edit") { g.editing = true; g.panel = null; }
       if (a === "guide-cancel") g.editing = null;
       if (a === "guide-channels") { g.panel = "platform"; g.editing = null; }
@@ -837,20 +1307,22 @@
       if (a === "guide-platform") {
         const selected = c.platforms.includes(id);
         if (selected && c.platforms.length === 1) return toast("至少保留一个发布渠道。");
-        addGuideChoice(`调整发布渠道：${id}`, { platforms: selected ? c.platforms.filter(p => p !== id) : [...c.platforms, id] });
+        addGuideChoice(selected ? `先不在 ${id} 发布了` : `再加上 ${id}`, { platforms: selected ? c.platforms.filter(p => p !== id) : [...c.platforms, id] });
       }
-      if (a === "guide-direction" || a === "guide-goal") addGuideChoice(`本次优先：${G.names[id]}`, { goal: id });
-      if (a === "guide-auto") { const recommendation = G.recommend(c); addGuideChoice(`采纳规则建议：${G.names[recommendation.goal]}`, recommendation); }
+      if (a === "guide-direction" || a === "guide-goal") addGuideChoice(`这次先做「${G.names[id]}」`, { goal: id });
+      if (a === "guide-auto") { const recommendation = G.recommend(c); addGuideChoice(`先按「${G.names[recommendation.goal]}」来吧`, recommendation); }
       if (a === "guide-focus") { const item = G.focusOptions(c).find(item => item.id === id); if (item) addGuideChoice(item.title, { focus: id, productRequested: Boolean(item.productRequested), note: item.note }); }
-      if (a === "guide-product") addGuideChoice(`选择演示讨论对象：${D.products.find(p => p.id === id)?.name || id}`, { product: id });
-      if (a === "guide-candidates") { g.candidateRound++; addGuideChoice("重新比较候选（依据仍为演示选题标签）", {}); }
-      if (a === "guide-directions") { g.directionRound++; addGuideChoice("换一组探索方向", {}); }
-      if (a === "guide-reselect-product") addGuideChoice("重新选择讨论产品", { product: "", productDeferred: false, productRequested: true });
-      if (a === "guide-skip-product") addGuideChoice("暂不指定型号，先讨论推广策略", { product: "", productDeferred: true });
+      if (a === "guide-product") addGuideChoice(`就选 ${D.products.find(p => p.id === id)?.name || id} 吧`, { product: id });
+      if (a === "guide-tone") addGuideChoice(`语气用「${id}」`, { tone: id });
+      if (a === "guide-tone-default") addGuideChoice("就按自然真诚来", { tone: "自然真诚" });
+      if (a === "guide-candidates") { g.candidateRound++; addGuideChoice("换一组候选看看", {}); }
+      if (a === "guide-directions") { g.directionRound++; addGuideChoice("换一组方向看看", {}); }
+      if (a === "guide-reselect-product") addGuideChoice("重新选一个讨论产品", { product: "", productDeferred: false, productRequested: true });
+      if (a === "guide-skip-product") addGuideChoice("这次先不指定型号", { product: "", productDeferred: true });
       if (a === "guide-strategies") {
         if (c.productConflict.length || c.clarification) return toast("请先确认存在歧义的修改或产品型号。");
         if (c.opportunity && !c.goal) { toast("先确认这条机会的推广目标，或让模拟规则给出建议。"); render(); return; }
-        if (!c.goal || !c.product) addGuideChoice("先看策略，未明确的信息保留待确认", { goal: c.goal || "awareness", productDeferred: !c.product });
+        if (!c.goal || !c.product) addGuideChoice("先看策略，没定的回头再补", { goal: c.goal || "awareness", productDeferred: !c.product });
         syncGuide(); navigate("analysis"); return;
       }
       if (a === "guide-restart") {
@@ -861,6 +1333,14 @@
     }
     if (a === "task") { if (d.task !== id) { invalidate(); d.opportunity = null; } d.task = id; renderHome(); save(); toast(`已选择${task().name}，可继续补充要求。`); }
     if (a === "new") { state.homePrompt = ""; state.homeProduct = ""; state.homeProductDeferred = false; homeProductQuery = ""; state.draft = fresh(); state.guide = null; state.draft.platforms = [...state.store.platforms]; if (!state.draft.platforms.length) state.draft.platforms = ["微信朋友圈"]; navigate("home"); }
+    if (a === "home-platform-toggle") { homePlatformMenuOpen = !homePlatformMenuOpen; renderHomePlatforms(); return; }
+    if (a === "home-platform") {
+      const pl = state.draft.platforms; const i = pl.indexOf(id);
+      if (i >= 0) { if (pl.length === 1) return toast("至少选择一个发布平台。"); pl.splice(i, 1); }
+      else pl.push(id);
+      renderHomePlatforms(); save();
+      return;
+    }
     if (a === "next-opportunity") { await switchOpportunity(id); return; }
     if (a === "preview-opportunity") {
       const o = opportunityList().find(item => item.id === id);
@@ -924,10 +1404,116 @@
     if (a === "opportunity-focus-place") {
       state.opportunityExplorer.activeView = "place";
       state.opportunityExplorer.mapFilter = "all";
-      state.opportunityExplorer.selectedPlace = id === "local" ? "place-shopping" : state.opportunityExplorer.selectedPlace;
+      if (id === "local" && !geoState().store) state.opportunityExplorer.selectedPlace = "place-shopping";
       save(); render();
       document.querySelector("#mc-opportunity-place-explorer")?.scrollIntoView?.({ behavior: "smooth", block: "start" });
       return;
+    }
+    if (a === "opportunity-demo-geo") {
+      // 演示：直接填入契约示例响应（合成数据），流程与真实接口完全一致。
+      const g0 = geoState();
+      g0.demo = true; g0.city = "杭州"; g0.keyword = "华为授权服务中心（城西银泰）";
+      g0.searchStatus = "done"; g0.searchError = ""; g0.searchResult = demoGeoSearch("示例门店", "杭州");
+      g0.store = null; g0.selectedStorePoiId = ""; g0.nearbyByCat = {}; g0.selectedNearby = []; g0.geoContext = null; g0.contextStatus = "idle"; g0.contextError = "";
+      state.opportunityExplorer.activeView = "place";
+      save(); render();
+      document.querySelector("#mc-opportunity-place-explorer")?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+      return toast("已填入演示搜索数据（合成），选择门店后加载周边。");
+    }
+    if (a === "geo-search" || a === "geo-search-retry") {
+      const city = String(document.querySelector("#mc-geo-city")?.value ?? "").trim();
+      const keyword = String(document.querySelector("#mc-geo-keyword")?.value ?? "").trim();
+      if (a === "geo-search" && !keyword) { render(); return toast("请填写门店或地点名称。"); }
+      const g0 = geoState();
+      g0.city = city; g0.keyword = keyword || g0.keyword;
+      if (!g0.keyword) { render(); return toast("请填写门店或地点名称。"); }
+      g0.demo = false; // 真实搜索：离开演示数据模式
+      g0.searchStatus = "loading"; g0.searchError = "";
+      save(); render();
+      try {
+        const data = await searchStoresApi({ keyword: g0.keyword, city: g0.city || undefined });
+        const g1 = geoState();
+        g1.searchStatus = "done";
+        g1.searchResult = data;
+        // 新查询快照会使旧门店引用失效（契约 404/410 语义），清空下游状态。
+        g1.store = null; g1.selectedStorePoiId = ""; g1.nearbyByCat = {}; g1.selectedNearby = []; g1.geoContext = null; g1.contextStatus = "idle"; g1.contextError = "";
+      } catch (e) {
+        const g1 = geoState();
+        g1.searchStatus = "error"; g1.searchError = geoErrorMessage(e);
+      }
+      save(); render();
+      return;
+    }
+    if (a === "geo-select-store") {
+      const g0 = geoState();
+      const poi = (g0.searchResult?.items || []).find(p => p.poi_id === id);
+      if (!poi) return toast("该候选已不在当前查询快照中，请重新搜索。");
+      g0.store = JSON.parse(JSON.stringify(poi));
+      g0.selectedStorePoiId = poi.poi_id;
+      g0.nearbyByCat = {}; g0.selectedNearby = []; g0.geoContext = null; g0.contextStatus = "idle"; g0.contextError = "";
+      save(); render();
+      for (const cat of g0.activeCategories) geoFetchNearbyCategory(cat);
+      return;
+    }
+    if (a === "geo-radius") {
+      const g0 = geoState();
+      const r = Number(id);
+      if (!g0.store || !Number.isFinite(r) || g0.radius === r) return;
+      g0.radius = r;
+      g0.selectedNearby = []; g0.geoContext = null; g0.contextStatus = "idle"; g0.contextError = "";
+      save(); render();
+      for (const cat of g0.activeCategories) geoFetchNearbyCategory(cat);
+      return;
+    }
+    if (a === "geo-category") {
+      const g0 = geoState();
+      if (!g0.store) return;
+      const on = g0.activeCategories.includes(id);
+      g0.activeCategories = on ? g0.activeCategories.filter(c => c !== id) : [...g0.activeCategories, id];
+      save(); render();
+      if (!on) geoFetchNearbyCategory(id);
+      return;
+    }
+    if (a === "geo-category-retry") { if (geoState().store) geoFetchNearbyCategory(id); return; }
+    if (a === "geo-toggle-nearby") {
+      const g0 = geoState();
+      const has = g0.selectedNearby.includes(id);
+      if (!has && g0.selectedNearby.length >= GEO_NEARBY_MAX) { render(); return toast(`最多选择 ${GEO_NEARBY_MAX} 个周边地点。`); }
+      g0.selectedNearby = has ? g0.selectedNearby.filter(x => x !== id) : [...g0.selectedNearby, id];
+      g0.geoContext = null; g0.contextStatus = "idle"; g0.contextError = "";
+      save(); render();
+      return;
+    }
+    if (a === "geo-plan") {
+      const g0 = geoState();
+      if (!g0.store || !g0.searchResult?.query_id) return;
+      if (g0.geoContext && !geoContextExpired(g0)) return;
+      const nearbyRefs = geoAllNearby(g0).filter(p => g0.selectedNearby.includes(p.poi_id)).map(p => ({ query_id: p.query_id, poi_id: p.poi_id }));
+      g0.contextStatus = "loading"; g0.contextError = "";
+      save(); render();
+      try {
+        const ctx = await createGeoContextApi({ storeRef: { query_id: g0.searchResult.query_id, poi_id: g0.selectedStorePoiId }, nearbyRefs });
+        const g1 = geoState();
+        g1.contextStatus = "done";
+        g1.geoContext = ctx;
+        geoEnterChat(ctx, g1.demo);
+      } catch (e) {
+        const g1 = geoState();
+        g1.contextStatus = "error";
+        g1.contextError = geoErrorMessage(e);
+        save(); render();
+      }
+      return;
+    }
+    if (a === "opportunity-scenario") {
+      const rec = opportunityList().find(x => (x.scenarios || []).some(s => s.id === id));
+      if (!rec) { render(); return toast("这条机会已不在有效期内，请选择当前推荐。"); }
+      const s = rec.scenarios.find(x => x.id === id);
+      const source = { ...rec, title: s.name, description: s.hook, direction: s.direction, scene: `${s.name}（样例场景）；${rec.scene}`, scenario: { id: s.id, name: s.name } };
+      state.draft = { ...fresh(), opportunity: { ...source }, task: rec.task, prompt: state.homePrompt || s.direction };
+      state.guide = G.create(state.homePrompt, homeProductSeed());
+      state.guide.defaultPlatforms = [...(state.store.platforms.length ? state.store.platforms : ["微信朋友圈"])];
+      navigate("guide"); return;
     }
     if (a === "explore-product") { state.draft = fresh(); state.guide = null; navigate("guide"); return; }
     if (a === "opportunity") {
@@ -941,7 +1527,7 @@
       state.guide.defaultPlatforms = [...(state.store.platforms.length ? state.store.platforms : ["微信朋友圈"])];
       navigate("guide"); return;
     }
-    if (a === "clear-opportunity") { ensureGuide(); invalidate(); d.opportunity = null; syncGuide(); render(); save(); toast("已清除机会依据，保留其他配置。"); }
+    if (a === "clear-opportunity") { ensureGuide(); invalidate(); d.opportunity = null; d.geo = null; syncGuide(); render(); save(); toast("已清除机会依据与地理上下文，保留其他配置。"); }
     if (a === "product") { addGuideChoice(`修改演示讨论产品：${D.products.find(p => p.id === id)?.name}`, { product: id }); render(); toast("产品已选择。"); }
     if (a === "platform") {
       if (d.platforms.includes(id) && d.platforms.length === 1) return toast("至少保留一个发布平台。");
@@ -954,6 +1540,11 @@
       const c = guideContext();
       if (c.productConflict.length || c.clarification) { navigate("guide"); return toast("有一项修改需要先确认，再继续推荐。"); }
       const s = recommendedStrategy(); selectStrategy(s); save(); render(); toast("已采用当前有效需求下的规则推荐，可直接确认方向。");
+    }
+    if (a === "result-tab") { state.resultTab = id; render(); }
+    if (a === "add-compliance-note") {
+      const input = $("#compliance-note"), text = input ? input.value.trim() : ""; if (!text) return toast("先填写核实结果。");
+      state.draft.complianceNotes = [...(state.draft.complianceNotes || []), text]; state.draft.revision++; save(); render(); toast("已记入合规清单，生成内容时会保留提醒。");
     }
     if (a === "adjust-strategy") {
       const text = $("#strategy-adjustment").value.trim(); if (!text) return toast("先填写想调整的方向。");
@@ -983,9 +1574,9 @@
       const o = currentOutput(), keys = mediaKinds;
       ensureOutputMedia(o);
       const kind = a === "choose-image" ? id : keys[(keys.indexOf(o.visualKind) + 1) % keys.length];
-      if (!visualAssets[kind]) return;
+      if (!assetOf(kind)) return;
       const occupied = o.imageMode === "multi" ? o.images.find(image => image.id !== o.activeImageId && image.visualKind === kind) : null;
-      if (occupied) { const current = o.images.find(image => image.id === o.activeImageId), previousKind = current.visualKind, previous = visualAssets[previousKind]; Object.assign(occupied, { visualKind: previousKind, visualSrc: previous.src, visualLabel: previous.label, visualAlt: previous.alt }); }
+      if (occupied) { const current = o.images.find(image => image.id === o.activeImageId), previousKind = current.visualKind, previous = assetOf(previousKind); Object.assign(occupied, { visualKind: previousKind, visualSrc: previous.src, visualLabel: previous.label, visualAlt: previous.alt }); }
       setOutputImage(o, kind); $(".mc-image-picker-dialog")?.close?.(); record(); render(); toast(occupied ? "已交换两张图片的素材，图片文字与发布文案保持不变。" : "已替换当前图片，其他图片与文案保持不变。");
     }
     if (a === "close-image-picker") $(".mc-image-picker-dialog")?.close?.();
@@ -993,7 +1584,7 @@
     if (a === "toggle-image-mode") {
       const o = currentOutput();
       if (o.imageMode === "multi") { ensureOutputMedia(o); o.imageMode = "single"; toast("已切换为单图预览；其余图片仍保存在草稿中。"); }
-      else { makeMultiImage(o); syncOutputImage(o, o.images[0]); toast("已加入不同主题的概念图，可调整顺序或逐张替换。"); }
+      else { makeMultiImage(o, state.draft.activePlatform); syncOutputImage(o, o.images[0]); toast("已加入不同主题的概念图，可调整顺序或逐张替换。"); }
       record(); render();
     }
     if (a === "add-result-image") {
@@ -1103,7 +1694,7 @@
         if (activeImage) activeImage[key] = el.value;
         o.visualTextEdited = true;
       }
-      $("#output-count").textContent = `${o.body.length} 字`; record(); updateResultPreview();
+      $("#output-count").textContent = `${o.body.length} 字`; record(); updateResultPreview(); refreshCompliance();
     }
     if (el.id === "result-requirement") { d.adjustment = el.value; save(); }
     if (["product-search", "product-filter"].includes(el.id)) filterProducts();
@@ -1124,11 +1715,18 @@
     document.querySelectorAll(".mc-product-card").forEach(el => { el.hidden = !matches.has(el.dataset.id); if (!el.hidden) count++; });
     $("#product-empty").hidden = count > 0;
   }
+  document.addEventListener("keydown", e => {
+    if (e.target && e.target.id === "guide-input" && e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      if (e.target.form && typeof e.target.form.requestSubmit === "function") e.target.form.requestSubmit();
+    }
+  });
   document.addEventListener("submit", e => {
     if (e.target.id === "guide-compose") {
       e.preventDefault(); const g = ensureGuide(), text = $("#guide-input").value;
       if (!text.trim()) return toast("先输入一点想法，或选择上方建议。");
       g.events.push({ kind: "text", text }); g.composer = ""; g.editing = null; g.panel = null;
+      beginThinking(ensureGuide());
       invalidate(); syncGuide(); render();
       $("#guide-input").focus(); return;
     }
@@ -1139,7 +1737,7 @@
     }
     if (e.target.id !== "store-form") return; e.preventDefault();
     const form = new FormData(e.target);
-    state.store = { location: form.get("location").trim(), landmarks: form.get("landmarks").trim(), audience: form.get("audience").trim(), platforms: form.getAll("platforms") };
+    state.store = { ...state.store, location: form.get("location").trim(), landmarks: form.get("landmarks").trim(), audience: form.get("audience").trim(), platforms: form.getAll("platforms") };
     save(); toast("门店信息已保存，本地推广机会已更新。");
   });
   $("#mc-continue").addEventListener("click", startGuide);

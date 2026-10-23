@@ -7,7 +7,7 @@ const vm = require("node:vm");
 const KEY = "huawei-marketing-prototype-v1";
 
 // Exercise the real event handlers without network/model access. Browser QA covers layout.
-function browser(saved, date = "2026-10-21T12:00:00") {
+function browser(saved, date = "2026-10-21T12:00:00", fetchImpl) {
   const nodes = new Map(), handlers = {}, copies = [];
   let stored = saved ? JSON.stringify(saved) : null;
   function node(selector) {
@@ -30,11 +30,12 @@ function browser(saved, date = "2026-10-21T12:00:00") {
   const context = vm.createContext({
     Date: class extends Date { constructor(...args) { super(...(args.length ? args : [date])); } static now() { return new Date(date).getTime(); } },
     window, location, document: { querySelector: node, querySelectorAll: () => [], addEventListener(type, fn) { handlers[type] = fn; } },
+    fetch: fetchImpl,
     localStorage: { getItem: () => stored, setItem(key, value) { assert.equal(key, KEY); stored = value; } },
     history: nativeHistory,
-    FormData: class { constructor(target) { this.values = target.values; } get(k) { return this.values[k]; } },
+    FormData: class { constructor(target) { this.values = target.values; } get(k) { return this.values[k]; } getAll(k) { const v = this.values[k]; return Array.isArray(v) ? v : v === undefined ? [] : [v]; } },
     navigator: { clipboard: { async writeText(text) { copies.push(text); } } },
-    setTimeout(fn, ms) { if (ms === 550) return setImmediate(fn); return 1; }, clearTimeout() {}, console
+    setTimeout(fn, ms) { if (ms <= 550) return setImmediate(fn); return 1; }, clearTimeout() {}, console
   });
   for (const file of ["prototype-data.js", "guidance.js", "prototype.js"]) vm.runInContext(fs.readFileSync(path.join(__dirname, "../ui", file), "utf8"), context);
   return {
@@ -115,23 +116,22 @@ test("homepage recommendation prioritizes a near date node and keeps the same ca
   assert.equal(model.dailyOpportunity(first, new Date("2026-10-22T12:00:00")).id, "date");
 });
 
-test("one or no eligible opportunity gives honest controls and useful empty actions", async () => {
+test("one or no eligible opportunity stays honest at the model level", async () => {
+  // 首页推荐区已移除（推荐内容保留在「推广机会」页），此处改为模型层校验。
   const only = browser(null, "2026-11-22T12:00:00");
-  assert.match(only.node("#mc-opportunity-cards").innerHTML, /目前仅此一条/);
-  assert.match(only.node("#mc-opportunity-cards").innerHTML, /data-action="next-opportunity" disabled/);
-  const none = browser(null, "2026-12-01T12:00:00");
-  assert.match(none.node("#mc-opportunity-cards").innerHTML, /暂时没有依据充分的特殊机会/);
-  assert.doesNotMatch(none.node("#mc-opportunity-cards").innerHTML, /class="mc-featured"/);
-  await none.click("opportunity", "date-refresh");
-  assert.equal(none.state().page, "home");
-  await none.click("explore-product"); assert.equal(none.state().page, "guide");
+  const model = only.window.MarketingPrototypeModel;
+  const sample = [
+    { id: "date", type: "时间节点", displayStart: "2026-10-01", windowStart: "2026-11-05", validUntil: "2026-11-25", preparationDays: 7, verification: "ready", relevance: "high", storeFit: true, actionable: true }
+  ];
+  assert.equal(model.eligibleOpportunities(sample, new Date("2026-11-22T12:00:00")).length, 1);
+  assert.equal(model.eligibleOpportunities(sample, new Date("2026-12-01T12:00:00")).length, 0);
 });
 
 
 for (const [task, heading] of Object.entries({ seeding: "场景体验分享", launch: "新品信息介绍", store: "到店咨询邀请", season: "节点主题内容" })) {
   test(`${task}: guided flow retains context, creates a task-specific draft and record`, async () => {
     const b = browser(); await b.complete(task);
-    assert.match(b.node("#mc-work-page").innerHTML, /完整图文预览/);
+    assert.match(b.node("#mc-work-page").innerHTML, /图片预览/);
     const d = b.state().draft;
     assert.equal(d.task, task);
     assert.equal(d.outputContext.task.goal, d.goal);
@@ -190,7 +190,7 @@ test("different directions change subsequent prompts, summaries and actual strat
 
 test("multiple goals ask a priority; explicit or rule-based selection resolves it", async () => {
   const b = browser(); b.input("mc-prompt", "推广MateBook 14，建立产品认知并吸引到店"); await b.start();
-  assert.match(b.node("#mc-work-page").innerHTML, /本次更优先的目标/);
+  assert.match(b.node("#mc-work-page").innerHTML, /本次更优先的目标|这次先做哪一个目标/);
   await b.click("guide-goal", "awareness");
   assert.equal(b.state().draft.goal, "awareness");
   assert.equal(b.window.MarketingGuidance.stage(b.window.MarketingGuidance.resolve(b.state().guide)), "ready");
@@ -199,9 +199,9 @@ test("multiple goals ask a priority; explicit or rule-based selection resolves i
 test("opportunity title, evidence and task pass through guide, strategies and saved results", async () => {
   const b = browser(); await b.click("opportunity", "date-refresh");
   assert.equal(b.state().page, "guide"); assert.equal(b.state().draft.task, "season");
-  assert.match(b.node("#mc-work-page").innerHTML, /从真实任务出发，找到适合介绍的华为 PC 方向/);
+  assert.match(b.node("#mc-work-page").innerHTML, /双 11 前后 · 预售与优惠/);
   await b.click("guide-goal", "needs"); await b.click("guide-focus", "checklist"); await b.click("guide-strategies"); await b.click("decide"); await b.click("generate");
-  assert.equal(b.state().draft.outputContext.task.opportunity.title, "从真实任务出发，找到适合介绍的华为 PC 方向");
+  assert.equal(b.state().draft.outputContext.task.opportunity.title, "双 11 前后 · 预售与优惠");
   assert.equal(b.state().draft.product, ""); assert.doesNotMatch(b.state().draft.outputs["通用草稿"].body, /X Pro|MateBook 14/);
   assert.equal(b.state().history[0].draft.opportunity.id, "date-refresh");
 });
@@ -212,7 +212,7 @@ test("opportunity explorer keeps calendar selection and date details in sync", a
   assert.equal(b.state().page, "opportunities");
   assert.equal(b.state().opportunityExplorer.month, "2026-11");
   assert.equal(b.state().opportunityExplorer.selectedDate, "2026-11-05");
-  assert.match(b.node("#mc-work-page").innerHTML, /从真实任务出发，找到适合介绍的华为 PC 方向/);
+  assert.match(b.node("#mc-work-page").innerHTML, /双 11 前后 · 预售与优惠/);
   await b.click("opportunity-month", "prev");
   assert.equal(b.state().opportunityExplorer.month, "2026-10");
   assert.match(b.node("#mc-work-page").innerHTML, /这一天没有配置机会/);
@@ -220,6 +220,72 @@ test("opportunity explorer keeps calendar selection and date details in sync", a
   await b.click("opportunity-date", "2026-11-05");
   assert.match(b.node("#mc-work-page").innerHTML, /data-action="opportunity"/);
   assert.match(b.node("#mc-work-page").innerHTML, /推荐主题/);
+});
+
+test("real-scenario explorer offers four scenario cards that seed a targeted guide draft", async () => {
+  const b = browser();
+  await b.click("preview-opportunity", "software-questions");
+  assert.equal(b.state().page, "opportunities");
+  const html = b.node("#mc-work-page").innerHTML;
+  assert.equal((html.match(/mc-scenario-card/g) || []).length, 4);
+  for (const s of ["dorm", "office", "travel", "home"]) assert.match(html, new RegExp(`data-action="opportunity-scenario" data-id="${s}"`));
+  await b.click("opportunity-scenario", "travel");
+  assert.equal(b.state().page, "guide");
+  assert.equal(b.state().draft.opportunity.scenario.id, "travel");
+  assert.match(b.node("#mc-work-page").innerHTML, /差旅/);
+});
+
+test("guide conversation renders as chat bubbles with a single agent identity tag", async () => {
+  const b = browser(); b.input("mc-prompt", "给到店顾客介绍 MateBook 14"); await b.start();
+  let html = b.node("#mc-work-page").innerHTML;
+  assert.match(html, /class="mc-msg mc-msg-agent is-first"/);
+  assert.match(html, /mc-msg-user/);
+  assert.equal((html.match(/Agent · 规则模拟/g) || []).length, 1);
+  assert.doesNotMatch(html, /class="mc-message/);
+  await b.say("主要面向到店咨询的顾客");
+  html = b.node("#mc-work-page").innerHTML;
+  assert.equal((html.match(/Agent · 规则模拟/g) || []).length, 1);
+  assert.ok((html.match(/mc-msg-user/g) || []).length >= 2);
+  assert.match(html, /placeholder="说说你这次想怎么推广……"/);
+});
+
+test("summary panel layers confirmed, pending and optional needs; ready stage shows a summary card with a primary action", async () => {
+  const b = browser(); await b.click("opportunity", "date-refresh");
+  await b.click("guide-goal", "store"); await b.click("guide-focus", "experience");
+  let html = b.node("#mc-work-page").innerHTML;
+  assert.match(html, /mc-sum-group is-confirmed/);
+  assert.match(html, /mc-sum-group is-pending/);
+  await b.say("用小红书发布，内容简短一点，不提价格");
+  html = b.node("#mc-work-page").innerHTML;
+  assert.match(html, /mc-sum-group is-optional/);
+  await b.click("guide-candidates"); await b.click("guide-skip-product");
+  assert.equal(b.window.MarketingGuidance.stage(b.window.MarketingGuidance.resolve(b.state().guide, b.state().draft.opportunity)), "ready");
+  html = b.node("#mc-work-page").innerHTML;
+  assert.match(html, /这次内容想要什么语气/);
+  assert.doesNotMatch(html, /mc-ready-card/);
+  await b.click("guide-tone-default");
+  html = b.node("#mc-work-page").innerHTML;
+  assert.match(html, /mc-ready-card/);
+  assert.match(html, /mc-ready-summary/);
+  assert.match(html, /进入推广策略/);
+  assert.match(html, /mc-sum-ready/);
+  await b.click("guide-strategies"); assert.equal(b.state().page, "analysis");
+});
+
+test("content tone can be guided in conversation by free text or ready-card chips and travels to the draft", async () => {
+  const b = browser(); b.input("mc-prompt", "给到店顾客介绍 MateBook 14"); await b.start();
+  await b.say("语气简洁专业一点");
+  assert.equal(b.state().draft.tone, "简洁专业");
+  assert.equal(b.state().draft.fieldStatus.tone, "confirmed");
+  let html = b.node("#mc-work-page").innerHTML;
+  assert.match(html, /<small>内容语气<\/small><span>简洁专业<\/span>/);
+  assert.match(html, /语气收到/);
+  await b.click("guide-tone", "轻松亲切");
+  assert.equal(b.state().draft.tone, "轻松亲切");
+  html = b.node("#mc-work-page").innerHTML;
+  assert.ok((html.match(/mc-tone-chip is-on/g) || []).length, 1);
+  await b.say("恢复默认语气");
+  assert.equal(b.state().draft.tone, "自然真诚");
 });
 
 test("opportunity explorer opens only the selected opportunity view", async () => {
@@ -254,7 +320,7 @@ test("concept place filters select the visible marker and carry its demo context
   assert.equal(explorer.state().opportunityExplorer.selectedPlace, "place-shopping");
   await explorer.click("opportunity-map-filter", "school");
   assert.equal(explorer.state().opportunityExplorer.selectedPlace, "");
-  assert.match(explorer.node("#mc-work-page").innerHTML, /学习场景示意点/);
+  assert.match(explorer.node("#mc-work-page").innerHTML, /浙江大学紫金港校区（西区）/);
   await explorer.click("opportunity-place", "place-school");
   assert.equal(explorer.state().opportunityExplorer.selectedPlace, "place-school");
   await explorer.click("opportunity", "local");
@@ -268,8 +334,6 @@ test("homepage recommendation rotates to an eligible shared opportunity and rout
   await b.click("next-opportunity");
   const next = b.state().recommendation.id;
   assert.notEqual(next, initial);
-  assert.match(b.node("#mc-opportunity-cards").innerHTML, /查看(时间节点|周边场景|产品探索)/);
-  assert.doesNotMatch(b.node("#mc-opportunity-cards").innerHTML, /抓住流量|提升转化|抢占先机/);
   await b.click("preview-opportunity", next);
   assert.equal(b.state().page, "opportunities");
   assert.equal(b.state().opportunityExplorer.selectedOpportunity, next === "software-questions" ? next : "");
@@ -380,7 +444,7 @@ test("a missing creation record id is ignored and a deleted active work saves un
 
 test("optional legacy product page retains search and selection flow without becoming mandatory", async () => {
   const b = browser(); await b.start(); await b.click("guide-strategies"); await b.click("config");
-  await b.click("product", "matebook-x-pro"); await b.click("platform", "视频号"); await b.click("analyze");
+  await b.click("product", "matebook-x-pro"); await b.click("platform", "门店海报"); await b.click("analyze");
   assert.equal(b.state().page, "analysis"); assert.equal(b.state().draft.product, "matebook-x-pro");
   await b.click("guide"); assert.equal(b.state().draft.product, "matebook-x-pro");
 });
@@ -472,9 +536,9 @@ test("rewriting homepage idea drops the previous opportunity instead of leaking 
 });
 
 test("store channels become editable suggestions and consultation changes strategy substance", async () => {
-  const initial = browser().state(); initial.store.platforms = ["视频号"];
+  const initial = browser().state(); initial.store.platforms = ["公众号"];
   const b = browser(initial); b.input("mc-prompt", "给MateBook 14建立产品认知"); await b.start();
-  assert.deepEqual(b.state().draft.platforms, ["视频号"]);
+  assert.deepEqual(b.state().draft.platforms, ["公众号"]);
   const before = b.window.MarketingPrototypeModel.strategyOptions(b.state().draft)[0].claim;
   await b.say("这次推动购买咨询更重要");
   const after = b.window.MarketingPrototypeModel.strategyOptions(b.state().draft)[0].claim;
@@ -793,8 +857,8 @@ test("creative previews vary by direction and expected outputs follow the platfo
     assert.ok(s.expectedOutputs.length >= 2);
     assert.match(s.factBasis, /示例|未核实|无已核实/);
   }
-  await b.say("不要小红书，改发视频号");
-  for (const s of b.window.MarketingPrototypeModel.strategyOptions(b.state().draft)) assert.match(s.expectedOutputs.join(" "), /口播脚本/);
+  await b.say("不要小红书，改发门店海报");
+  for (const s of b.window.MarketingPrototypeModel.strategyOptions(b.state().draft)) assert.match(s.expectedOutputs.join(" "), /海报/);
 });
 
 test("each selected creative transfers its complete brief and distinct copy into results", async () => {
@@ -850,7 +914,7 @@ test("one lead recommendation can generate directly without a separate selection
   const html = b.node("#mc-work-page").innerHTML;
   assert.equal((html.match(/class="mc-lead-strategy"/g) || []).length, 1);
   assert.doesNotMatch(html, /class="mc-strategy-grid"|选择这个方向/);
-  assert.match(html, /<details class="mc-alternatives">/); assert.doesNotMatch(html, /<details class="mc-alternatives" open/);
+  assert.doesNotMatch(html, /mc-alternatives|查看其他方向/);
   assert.match(html, /规则模拟/); assert.match(html, /确认方向，生成推广图文/);
   assert.equal(b.state().draft.strategyId, "");
   await Promise.all([b.click("generate"), b.click("generate")]);
@@ -986,7 +1050,7 @@ test("single canvas and independent image or copy generation preserve unrelated 
   b.input("output-title", "手写发布标题"); b.input("output-body", "我的手写正文");
   b.input("output-visual-headline", "我的图片主标题"); b.input("output-cta", "留言了解资料");
   const read = () => b.state().draft.outputs["微信朋友圈"];
-  await b.click("choose-image", "dialogue");
+  await b.click("choose-image", "altDialogue");
   const before = read();
   b.window.confirm = () => false; await b.click("regenerate-copy"); assert.deepEqual(read(), before);
   b.window.confirm = () => true; await b.click("regenerate-copy");
@@ -1003,7 +1067,6 @@ test("single canvas and independent image or copy generation preserve unrelated 
 test("multi-image work stays one workbench and image operations leave copy untouched", async () => {
   const b = browser(); await b.complete();
   const originalBody = b.state().draft.outputs["微信朋友圈"].body;
-  await b.click("toggle-image-mode");
   let output = b.state().draft.outputs["微信朋友圈"];
   assert.equal(output.imageMode, "multi"); assert.equal(output.images.length, 3);
   assert.equal(new Set(output.images.map(image => image.visualSrc)).size, 3);
@@ -1011,9 +1074,9 @@ test("multi-image work stays one workbench and image operations leave copy untou
   output = b.state().draft.outputs["微信朋友圈"];
   assert.equal(output.activeImageId, "image-2"); assert.equal(output.visualKind, output.images[1].visualKind);
   assert.equal(output.body, originalBody);
-  await b.click("choose-image", output.images[0].visualKind);
+  await b.click("choose-image", "altScene");
   output = b.state().draft.outputs["微信朋友圈"];
-  assert.equal(output.images[1].visualKind, "scene"); assert.equal(output.images[0].visualKind, "editorial");
+  assert.equal(output.images[1].visualKind, "altScene"); assert.equal(output.images[0].visualKind, "scene");
   assert.equal(output.body, originalBody);
   await b.click("move-image-up"); assert.equal(b.state().draft.outputs["微信朋友圈"].images[0].id, "image-2");
   await b.click("remove-result-image"); assert.equal(b.state().draft.outputs["微信朋友圈"].images.length, 2);
@@ -1037,4 +1100,130 @@ test("changing the lead never rewrites manual results and regeneration uses the 
   assert.deepEqual(b.state().history.find(r => r.id === previousRecordId).draft.outputs, previousOutputs);
   assert.notEqual(b.state().draft.recordId, previousRecordId);
   assert.equal(b.state().history.some(r => Object.values(r.draft.outputs).some(o => o.strategy.id === other.id)), true);
+});
+
+test("placePosition maps bearing and distance proportionally around the store", () => {
+  const model = browser().window.MarketingPrototypeModel;
+  const store = { lat: 30.0, lng: 120.0 };
+  const pos = style => Object.fromEntries(style.replace(/;$/, "").split(";").map(pair => pair.split(":")));
+  const north = pos(model.placePosition({ lat: 30.01, lng: 120.0 }, store));
+  const east = pos(model.placePosition({ lat: 30.0, lng: 120.01 }, store));
+  const far = pos(model.placePosition({ lat: 30.1, lng: 120.0 }, store));
+  assert.ok(Number(north.left.replace("%", "")) > 49 && Number(north.left.replace("%", "")) < 51);
+  assert.ok(Number(north.top.replace("%", "")) < 50, "北侧地点应在门店上方");
+  assert.ok(Number(east.left.replace("%", "")) > 50, "东侧地点应在门店右方");
+  assert.ok(Number(east.top.replace("%", "")) > 49 && Number(east.top.replace("%", "")) < 51);
+  assert.equal(far.top, "10.0%", "超过 2.5 公里应被钳制在外圈");
+  assert.equal(far.left, "50.0%");
+});
+
+// ===== 地理信息契约 v0.1（docs/geo-api-contract-v0.1.json）：搜索 → 周边 → 地理上下文进聊天 =====
+function contractPoi(id, name, category, lng, lat, distance_m) {
+  return {
+    poi_id: id, name, address: "合成地址（测试数据）",
+    location: { lng, lat, coordinate_system: "GCJ-02" },
+    type_code: "TEST", category, distance_m,
+    source: { provider: "amap", queried_at: "2026-10-23T06:00:00Z", verification_scope: "provider_record_only", live: true }
+  };
+}
+const flush = async (rounds = 6) => { for (let i = 0; i < rounds; i++) await new Promise(r => setImmediate(r)); };
+async function openPlaceExplorer(b) {
+  await b.clickPage("opportunities");
+  await b.click("opportunity-focus-place", "local");
+}
+
+test("settings form persists store basics (location, landmarks, audience, platforms) across restore", async () => {
+  const b = browser();
+  await b.submit("store-form", { location: "杭州市西湖区示例商圈", landmarks: "示例大学旁", audience: "门店观察填写（待验证）", platforms: ["微信朋友圈", "小红书"] });
+  assert.equal(b.state().store.location, "杭州市西湖区示例商圈");
+  assert.equal(b.state().store.landmarks, "示例大学旁");
+  assert.deepEqual(b.state().store.platforms, ["微信朋友圈", "小红书"]);
+  const restored = browser(b.state());
+  assert.equal(restored.state().store.location, "杭州市西湖区示例商圈");
+  assert.equal(restored.state().store.platforms.length, 2);
+});
+
+test("place explorer starts with concept fallback before any geo search", async () => {
+  const b = browser();
+  await openPlaceExplorer(b);
+  const html = b.node("#mc-work-page").innerHTML;
+  assert.ok(html.includes("mc-geo-search"), "应出现契约搜索面板");
+  assert.ok(html.includes("data:image/jpeg;base64,"), "初始态应直接展示城西银泰地图截图");
+  assert.ok(html.includes("演示素材"));
+  assert.ok(!html.includes("围绕这里策划"), "未选门店不应出现策划按钮");
+});
+
+test("demo geo flow: search demo data → select store → nearby categories → pick place → context enters chat", async () => {
+  const b = browser();
+  await openPlaceExplorer(b);
+  await b.click("opportunity-demo-geo");
+  let html = b.node("#mc-work-page").innerHTML;
+  assert.ok(html.includes("SYNTHETIC_STORE_001"), "演示搜索应返回合成候选门店");
+  assert.ok(html.includes("华为授权服务中心（城西银泰）"), "演示门店应为城西银泰华为店");
+  await b.click("geo-select-store", "SYNTHETIC_STORE_001");
+  await flush();
+  html = b.node("#mc-work-page").innerHTML;
+  for (const name of ["杭州绿城育华学校", "杭州电子商务产业园", "印象城"]) assert.ok(html.includes(name), `周边应包含 ${name}`);
+  assert.ok(html.includes("data:image/jpeg;base64,"), "已选门店应展示地图截图（演示素材）");
+  assert.ok(/left:\d+\.\d%/.test(html), "地图标记应按距离等比定位");
+  assert.ok(html.includes("围绕这里策划"));
+  await b.click("geo-toggle-nearby", "SYNTHETIC_SCHOOL_001");
+  await b.click("geo-plan");
+  await flush();
+  assert.equal(b.state().page, "guide", "生成地理上下文后应进入聊天任务");
+  const geo = b.state().draft.geo;
+  assert.equal(geo.geo_context_id, "geo-context-demo-001");
+  assert.equal(geo.scenarioInputs.store.geo_context_id, "geo-context-demo-001");
+  assert.equal(geo.verification_scope, "provider_record_only");
+  assert.equal(geo.demo, true);
+  html = b.node("#mc-work-page").innerHTML;
+  assert.ok(html.includes("scenario_inputs.store.geo_context_id"), "聊天页应展示将提交的载荷");
+  assert.ok(html.includes("geo-context-demo-001"));
+  assert.ok(html.includes("data:image/jpeg;base64,"), "聊天页上下文卡片应带门店地图截图");
+});
+
+test("geo search surfaces envelope error GEO_NOT_CONFIGURED in the panel", async () => {
+  const fetchImpl = async () => ({ ok: false, status: 503, json: async () => ({ success: false, data: null, error: { code: "GEO_NOT_CONFIGURED", message: "地图服务未配置", retryable: false } }) });
+  const b = browser(null, "2026-10-21T12:00:00", fetchImpl);
+  await openPlaceExplorer(b);
+  b.node("#mc-geo-city").value = "杭州";
+  b.node("#mc-geo-keyword").value = "华为授权体验店";
+  await b.click("geo-search");
+  await flush();
+  const html = b.node("#mc-work-page").innerHTML;
+  assert.ok(html.includes("地图服务未配置或凭证无效"), "503 envelope 应转成可读提示");
+  assert.ok(html.includes("geo-search-retry"), "应提供重试入口");
+});
+
+test("geo context GEO_CONTEXT_EXPIRED keeps the user on the explorer with a re-select hint", async () => {
+  const store = contractPoi("TEST_STORE_001", "测试门店", "other", 120.1, 30.2, null);
+  const nearbyByCat = {
+    school: [contractPoi("TEST_SCHOOL_001", "测试学校", "school", 120.101, 30.201, 150)],
+    office: [contractPoi("TEST_OFFICE_001", "测试写字楼", "office", 120.112, 30.205, 1100)],
+    mall: [contractPoi("TEST_MALL_001", "测试商场", "mall", 120.098, 30.19, 1200)]
+  };
+  const ok = data => ({ ok: true, status: 200, json: async () => ({ success: true, data, error: null }) });
+  const fetchImpl = async (url) => {
+    if (url.startsWith("/api/geo/search")) return ok({ query_id: "q-search-1", expires_at: "2026-10-23T10:00:00Z", keyword: "华为", city: "杭州", page: 1, page_size: 10, has_more: false, items: [store], limitations: ["合成限制说明"] });
+    if (url.startsWith("/api/geo/nearby")) { const cat = /category=([a-z]+)/.exec(url)[1]; return ok({ query_id: `q-nearby-${cat}`, expires_at: "2026-10-23T10:00:00Z", center: { ...store.location }, radius_m: 1500, category: cat, page: 1, page_size: 20, has_more: false, items: nearbyByCat[cat] || [], limitations: ["合成限制说明"] }); }
+    if (url.startsWith("/api/geo/context")) return { ok: false, status: 410, json: async () => ({ success: false, data: null, error: { code: "GEO_CONTEXT_EXPIRED", message: "地点选择已过期", retryable: false } }) };
+    throw new Error("unexpected url " + url);
+  };
+  const b = browser(null, "2026-10-21T12:00:00", fetchImpl);
+  await openPlaceExplorer(b);
+  b.node("#mc-geo-city").value = "杭州";
+  b.node("#mc-geo-keyword").value = "华为授权体验店";
+  await b.click("geo-search");
+  await flush();
+  assert.ok(b.node("#mc-work-page").innerHTML.includes("TEST_STORE_001"));
+  await b.click("geo-select-store", "TEST_STORE_001");
+  await flush();
+  const html = b.node("#mc-work-page").innerHTML;
+  assert.ok(html.includes("测试学校") && html.includes("GCJ-02"));
+  await b.click("geo-toggle-nearby", "TEST_SCHOOL_001");
+  await b.click("geo-plan");
+  await flush();
+  assert.equal(b.state().page, "opportunities", "410 时不应进入聊天");
+  assert.ok(!b.state().draft.geo, "410 时不应写入地理上下文");
+  assert.ok(b.node("#mc-work-page").innerHTML.includes("地点选择已过期，请重新查询并选择。"));
 });

@@ -344,12 +344,40 @@ body{margin:0;background:#f5f6f7}
 #marketing-creator-home .mc-map-ring.ring-b{width:460px;height:460px}
 #marketing-creator-home .mc-map-store,#marketing-creator-home .mc-map-marker{position:absolute;z-index:2;display:flex;flex-direction:column;align-items:center;gap:4px;min-width:70px}
 #marketing-creator-home .mc-map-store{left:50%;top:50%;transform:translate(-50%,-50%)}
-#marketing-creator-home .mc-map-marker{border:0;background:transparent;transform:translate(-50%,-50%);color:#25313b}
+#marketing-creator-home .mc-map-marker{border:0;background:transparent;transform:translate(-50%,-50%);color:#25313b;cursor:pointer}
+#marketing-creator-home .mc-map-marker small{order:-1}
 #marketing-creator-home .mc-map-store span,#marketing-creator-home .mc-map-marker span{display:grid;place-items:center;width:42px;height:42px;border-radius:50%;background:#fff;border:1px solid #c9d4d2;box-shadow:0 5px 15px #263f3b16;font-size:16px}
 #marketing-creator-home .mc-map-store span{background:var(--mc-accent);border-color:var(--mc-accent);color:#fff}
+#marketing-creator-home .mc-map-marker:hover span,#marketing-creator-home .mc-map-marker:focus-visible span{border-color:var(--mc-accent);color:var(--mc-accent)}
 #marketing-creator-home .mc-map-marker.is-selected span{border:2px solid var(--mc-accent);color:var(--mc-accent)}
+#marketing-creator-home .mc-map-marker.is-selected{z-index:3}
 #marketing-creator-home .mc-map-store small,#marketing-creator-home .mc-map-marker small{font-size:11px;white-space:nowrap;background:#ffffffdb;padding:2px 5px;border-radius:4px}
-@media(max-width:700px){#marketing-creator-home .mc-opportunity-list-item,#marketing-creator-home .mc-opportunity-detail{align-items:flex-start;flex-direction:column}#marketing-creator-home .mc-opportunity-explore-block{padding:18px}#marketing-creator-home .mc-calendar-day{aspect-ratio:1;min-height:42px}#marketing-creator-home .mc-calendar-day i{display:none}#marketing-creator-home .mc-concept-map{height:290px}#marketing-creator-home .mc-map-marker small{max-width:84px;white-space:normal;text-align:center}}
+/* 标注防重叠：默认只显示圆点，名称在选中/悬停/键盘聚焦时出现；完整名单由地图下方的地点列表承担。 */
+#marketing-creator-home .mc-map-marker small{opacity:0;transition:opacity .15s ease;pointer-events:none}
+#marketing-creator-home .mc-map-marker.is-selected small,#marketing-creator-home .mc-map-marker:hover small,#marketing-creator-home .mc-map-marker:focus-visible small{opacity:1}
+#marketing-creator-home .mc-map-scale{position:absolute;right:10px;bottom:8px;font-size:11px;color:#5f6b66;background:#ffffffb0;padding:2px 6px;border-radius:4px;z-index:2}
+#marketing-creator-home .mc-geo-banner{display:flex;align-items:flex-start;gap:12px;padding:14px 16px;margin-bottom:14px;border:1px solid #ead9c0;background:#fdf8ef;border-radius:12px}
+#marketing-creator-home .mc-geo-banner>svg{width:20px;height:20px;flex-shrink:0;color:#a5761f;margin-top:2px}
+#marketing-creator-home .mc-geo-banner strong{display:block;font-size:14px;line-height:1.6;color:#4c3d22}
+#marketing-creator-home .mc-geo-banner p{margin:4px 0 0;font-size:13px;line-height:1.7}
+#marketing-creator-home .mc-geo-banner-actions{display:flex;gap:8px;flex-shrink:0;margin-left:auto;align-items:center}
+#marketing-creator-home .mc-place-chips{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
+#marketing-creator-home .mc-place-chip{display:inline-flex;align-items:center;gap:8px;padding:6px 12px 6px 6px;border:1px solid #dfe6e5;border-radius:999px;background:#fff;font-size:13px;color:#25313b;cursor:pointer;transition:border-color var(--mc-motion),box-shadow var(--mc-motion)}
+#marketing-creator-home .mc-place-chip:hover{border-color:#b9c6c2}
+#marketing-creator-home .mc-place-chip.is-active{border-color:var(--mc-accent);box-shadow:0 0 0 1px var(--mc-accent)}
+#marketing-creator-home .mc-place-chip strong{font-weight:600}
+#marketing-creator-home .mc-place-chip small{color:#6b7671;font-size:12px}
+#marketing-creator-home .mc-place-chip-badge{display:grid;place-items:center;width:24px;height:24px;border-radius:50%;background:#eef3f1;border:1px solid #d5dfdc;font-size:12px}
+#marketing-creator-home .mc-place-chip-badge.school{background:#e8f0fb;border-color:#c8dbf5}
+#marketing-creator-home .mc-place-chip-badge.business{background:#eaf5ee;border-color:#cbe5d4}
+#marketing-creator-home .mc-place-chip-badge.shopping{background:#fdeef0;border-color:#f3cdd3}
+#marketing-creator-home .mc-geo-fieldset{border:1px solid #e1e6e7;border-radius:12px;padding:14px 16px;margin:14px 0}
+#marketing-creator-home .mc-geo-fieldset>legend{font-size:13px;font-weight:600;color:#3c4650;padding:0 6px}
+#marketing-creator-home .mc-geo-fieldset>p{margin:0 0 10px;font-size:12px;line-height:1.7}
+#marketing-creator-home .mc-geo-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+#marketing-creator-home .mc-geo-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:4px}
+#marketing-creator-home .mc-geo-actions .mc-muted{font-size:12px;line-height:1.6}
+@media(max-width:700px){#marketing-creator-home .mc-opportunity-list-item,#marketing-creator-home .mc-opportunity-detail{align-items:flex-start;flex-direction:column}#marketing-creator-home .mc-opportunity-explore-block{padding:18px}#marketing-creator-home .mc-calendar-day{aspect-ratio:1;min-height:42px}#marketing-creator-home .mc-calendar-day i{display:none}#marketing-creator-home .mc-concept-map{height:290px}#marketing-creator-home .mc-map-marker small{max-width:84px;white-space:normal;text-align:center}#marketing-creator-home .mc-geo-row{grid-template-columns:1fr}#marketing-creator-home .mc-geo-banner{flex-direction:column}#marketing-creator-home .mc-geo-banner-actions{margin-left:0}}
 #marketing-creator-home .mc-opportunity-source>strong{display:block;margin-top:6px;font-size:15px;font-weight:600;color:var(--mc-ink)}
 #marketing-creator-home .mc-opportunity-source>p{font-size:13px;line-height:1.8}
 #marketing-creator-home .mc-opportunity-source details{margin-top:9px}
@@ -567,3 +595,486 @@ body{margin:0;background:#f5f6f7}
 #marketing-creator-home .mc-results-workbench .mc-result-poster-copy>strong{font-size:24px}
 @media(max-width:1100px){#marketing-creator-home .mc-result-edit-top{align-items:stretch;flex-direction:column}#marketing-creator-home .mc-result-edit-top .mc-result-image-actions{flex:initial}}
 @media(max-width:560px){#marketing-creator-home .mc-image-text-fields{grid-template-columns:1fr;gap:0}#marketing-creator-home .mc-publication-preview[data-platform='视频号'] .mc-publication-card{display:flex}#marketing-creator-home .mc-publication-preview[data-platform='视频号'] .mc-result-poster>img{aspect-ratio:4/3}#marketing-creator-home .mc-results-workbench .mc-result-poster-copy>strong{font-size:22px}}
+
+/* 配图方案、知识库依据与合规检查：沿用现有浅色面板语言，不新增视觉体系。 */
+#marketing-creator-home .mc-page-head .mc-secondary,#marketing-creator-home .mc-page-head .mc-link{white-space:nowrap;flex-shrink:0}
+#marketing-creator-home .mc-image-plan{margin-top:14px;font-size:12px;line-height:1.7}
+#marketing-creator-home .mc-image-plan>summary{cursor:pointer;font-weight:500;color:#3d454d}
+#marketing-creator-home .mc-image-plan>summary:hover{color:var(--mc-accent)}
+#marketing-creator-home .mc-image-plan>ul{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:8px}
+#marketing-creator-home .mc-image-plan>ul>li{display:grid;gap:2px;padding:9px 12px;border:1px solid #e7eaee;border-radius:10px;background:#fafbfc}
+#marketing-creator-home .mc-image-plan>ul>li span{color:#5c6670;overflow-wrap:anywhere}
+#marketing-creator-home .mc-result-evidence,#marketing-creator-home .mc-result-compliance{margin:12px 0 0;font-size:12px;line-height:1.7}
+#marketing-creator-home .mc-result-evidence>summary,#marketing-creator-home .mc-result-compliance>summary{cursor:pointer;font-weight:500;color:#3d454d}
+#marketing-creator-home .mc-result-evidence>summary:hover,#marketing-creator-home .mc-result-compliance>summary:hover{color:var(--mc-accent)}
+#marketing-creator-home .mc-evidence-list,#marketing-creator-home .mc-compliance-list{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:8px}
+#marketing-creator-home .mc-evidence-list>li{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;padding:9px 12px;border:1px solid #e7eaee;border-radius:10px;background:#fafbfc}
+#marketing-creator-home .mc-evidence-list>li .mc-fact-status{margin-left:0}
+#marketing-creator-home .mc-evidence-list>li p{grid-column:2;margin:0;color:#3d454d}
+#marketing-creator-home .mc-evidence-list>li small{grid-column:2;color:#8a929c}
+#marketing-creator-home .mc-compliance-list>li{display:grid;gap:2px;padding:9px 12px;border:1px solid #e7eaee;border-radius:10px;background:#fafbfc}
+#marketing-creator-home .mc-compliance-list>li.is-passed strong{color:#39705b}
+#marketing-creator-home .mc-compliance-list>li.is-flagged{border-color:#e5c9cd;background:#fdf7f8}
+#marketing-creator-home .mc-compliance-list>li.is-flagged strong{color:#a7273a}
+#marketing-creator-home .mc-compliance-list>li span{color:#5c6670;overflow-wrap:anywhere}
+#marketing-creator-home .mc-compliance-list>li em{font-style:normal;color:#8a929c}
+@media(max-width:560px){#marketing-creator-home .mc-evidence-list>li{grid-template-columns:1fr}}
+
+/* ===== 首页改版 v4：满屏 hero + 悬浮输入卡 + 居中排版 + 可收起侧边栏（覆盖层，不改旧规则） ===== */
+#marketing-creator-home .mc-main{position:relative}
+#marketing-creator-home #mc-fx{position:absolute;inset:0;z-index:0;pointer-events:none}
+#marketing-creator-home .mc-top{position:relative;z-index:2}
+#marketing-creator-home #mc-create-page,#marketing-creator-home #mc-work-page{position:relative;z-index:1}
+
+/* 满屏 hero：第一屏整屏垂直居中，下滑才见推荐 */
+#marketing-creator-home .mc-hero{position:relative;min-height:calc(100vh - 67px);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:0 0 72px;will-change:transform,opacity}
+#marketing-creator-home .mc-home-head{padding-top:0}
+#marketing-creator-home .mc-home-head h1{font-family:"Songti SC","Noto Serif SC","STSong",serif;font-size:56px;font-weight:700;line-height:1.18;letter-spacing:0;margin:0 0 18px}
+#marketing-creator-home .mc-home-head p{font-size:16px}
+
+/* 产品选择行：跟随 hero 居中 */
+#marketing-creator-home .mc-home-products{margin-top:32px;display:flex;flex-direction:column;align-items:center;gap:6px}
+#marketing-creator-home .mc-home-product-row{justify-content:center}
+#marketing-creator-home .mc-home-product-help{justify-content:center;text-align:center}
+
+/* 输入区：扁平悬浮立体卡，覆盖旧渐变玻璃风 */
+/* taste-skill-ignore: 用户明确要求的悬浮立体效果，静止投影为设计决策 */
+#marketing-creator-home .mc-composer{width:min(900px,100%);margin-top:20px;padding:28px 30px 22px;border:1px solid #e8e8ea;border-top:1px solid #e8e8ea;border-radius:16px;background:#fff;-webkit-backdrop-filter:none;backdrop-filter:none;box-shadow:0 1px 2px rgba(23,23,25,.05),0 18px 48px rgba(23,23,25,.10);transition:box-shadow .18s cubic-bezier(.22,.61,.36,1),border-color .12s ease,transform .18s cubic-bezier(.22,.61,.36,1)}
+#marketing-creator-home .mc-composer:hover{box-shadow:0 1px 2px rgba(23,23,25,.05),0 24px 64px rgba(23,23,25,.13);transform:translateY(-2px)}
+#marketing-creator-home .mc-composer:focus-within{border-color:var(--mc-accent);box-shadow:0 0 0 2px rgba(228,0,43,.18),0 24px 64px rgba(23,23,25,.13);transform:translateY(-2px)}
+#marketing-creator-home .mc-prompt{padding:0;min-height:132px;font-size:18px;line-height:1.6;resize:none;border-radius:0}
+#marketing-creator-home .mc-prompt::placeholder{color:#6b6b6b}
+#marketing-creator-home .mc-compose-bottom{padding:0;margin-top:14px;align-items:flex-end}
+#marketing-creator-home .mc-input-example{font-size:13px;max-width:66%}
+#marketing-creator-home .mc-composer .mc-primary{height:48px;min-height:48px;padding:0 28px;font-size:16px;border-radius:10px;background:var(--mc-accent);box-shadow:none;gap:8px}
+#marketing-creator-home .mc-composer .mc-primary:hover{background:var(--mc-accent-dark,#c20024);transform:translateY(-1px)}
+#marketing-creator-home .mc-error{text-align:center}
+
+/* 声明行与平台信任行 */
+#marketing-creator-home .mc-below{justify-content:center;gap:10px;margin-top:18px;font-size:12px}
+#marketing-creator-home .mc-trust{margin-top:44px;display:flex;flex-direction:column;align-items:center;gap:12px}
+#marketing-creator-home .mc-trust-label{font-size:13px;color:var(--mc-muted)}
+#marketing-creator-home .mc-trust-row{display:flex;align-items:center;gap:26px;flex-wrap:wrap;justify-content:center}
+#marketing-creator-home .mc-trust-row>span{font-size:14px;color:#3d3d42;font-weight:500;display:inline-flex;align-items:center;gap:7px}
+#marketing-creator-home .mc-trust-row svg{width:16px;height:16px;stroke:#8a8a90;stroke-width:1.5;fill:none}
+
+/* 下滑提示 */
+#marketing-creator-home .mc-scroll-hint{position:absolute;bottom:22px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 10px;font-size:12px;color:var(--mc-muted);background:none;border:0;cursor:pointer}
+#marketing-creator-home .mc-scroll-hint:hover{color:var(--mc-ink)}
+#marketing-creator-home .mc-scroll-hint svg{width:18px;height:18px;stroke:currentColor;stroke-width:1.5;fill:none;animation:mc-hint-bounce 2.2s cubic-bezier(.22,.61,.36,1) infinite}
+@keyframes mc-hint-bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(5px)}}
+
+/* 今日推广推荐：与输入卡同款的居中悬浮大卡 */
+#marketing-creator-home .mc-gallery{margin:0 auto;padding:110px 0 130px;max-width:960px;display:flex;flex-direction:column;align-items:center;text-align:center}
+#marketing-creator-home .mc-gallery .mc-recommendation-head{flex-direction:column;align-items:center;gap:6px;margin-bottom:26px;text-align:center}
+#marketing-creator-home .mc-recommendation-head h2{font-size:16px;font-weight:600;letter-spacing:0}
+#marketing-creator-home .mc-recommendation-head p{margin:4px 0 0;max-width:52ch}
+#marketing-creator-home #mc-recommendation-date{padding-top:0}
+/* taste-skill-ignore: 与输入区同款的悬浮卡片语言，用户指定 */
+#marketing-creator-home .mc-featured{display:flex;flex-direction:column;justify-content:center;min-height:340px;width:min(1040px,100%);padding:56px 64px;text-align:center;border:1px solid #e8e8ea;border-radius:16px;background:#fff;box-shadow:0 1px 2px rgba(23,23,25,.05),0 18px 48px rgba(23,23,25,.10);transition:box-shadow .18s cubic-bezier(.22,.61,.36,1),transform .18s cubic-bezier(.22,.61,.36,1)}
+#marketing-creator-home .mc-featured:hover{box-shadow:0 1px 2px rgba(23,23,25,.05),0 24px 64px rgba(23,23,25,.13);transform:translateY(-2px);border-color:#e8e8ea}
+#marketing-creator-home .mc-featured-visual{display:none}
+#marketing-creator-home .mc-featured-copy{display:flex;flex-direction:column;align-items:center}
+#marketing-creator-home .mc-featured-meta{justify-content:center;margin-bottom:0}
+#marketing-creator-home .mc-featured h3{margin:14px auto 0;font-size:26px;line-height:1.35;max-width:30ch}
+#marketing-creator-home .mc-featured-description{margin:10px auto 0;max-width:56ch}
+#marketing-creator-home .mc-featured-reason{margin:15px auto 0;max-width:56ch}
+#marketing-creator-home .mc-featured-reason strong{margin-right:8px}
+#marketing-creator-home .mc-opportunity-actions{justify-content:center}
+#marketing-creator-home .mc-featured-tools{display:flex;flex-direction:column;align-items:center;gap:10px;min-height:0;padding-top:18px;text-align:center}
+#marketing-creator-home .mc-featured-tools .mc-opportunity-details>summary{margin:0 auto;max-width:100%;justify-content:center}
+#marketing-creator-home .mc-featured-tools .mc-switch-control{position:static;justify-content:center}
+#marketing-creator-home .mc-featured-tools .mc-opportunity-evidence{text-align:left;width:min(640px,100%)}
+#marketing-creator-home .mc-opportunity-empty{text-align:center}
+#marketing-creator-home .mc-gallery-foot{text-align:center}
+
+/* 侧边栏收起为 60px 图标栏（仅桌面端；窄屏沿用既有横条/窄栏断点） */
+#marketing-creator-home .mc-collapse-btn{display:flex;align-items:center;gap:8px;margin-top:12px;padding:8px 12px;min-height:34px;border-radius:8px;font-size:12px;color:var(--mc-muted);background:none;border:0;cursor:pointer;white-space:nowrap}
+#marketing-creator-home .mc-collapse-btn:hover{background:#fff;color:var(--mc-ink)}
+#marketing-creator-home .mc-collapse-btn svg{width:15px;height:15px;stroke:currentColor;stroke-width:1.5;fill:none;transition:transform .18s ease}
+@media(min-width:851px){
+  #marketing-creator-home .mc-app{transition:grid-template-columns .18s ease}
+  #marketing-creator-home .mc-app.collapsed{grid-template-columns:60px minmax(0,1fr)}
+  #marketing-creator-home .mc-app.collapsed .mc-side{padding:29px 8px 20px;align-items:center}
+  #marketing-creator-home .mc-app.collapsed .mc-brand{padding:0 0 41px;justify-content:center}
+  #marketing-creator-home .mc-app.collapsed .mc-brand>span:last-child,
+  #marketing-creator-home .mc-app.collapsed .mc-nav button span,
+  #marketing-creator-home .mc-app.collapsed .mc-side-footer,
+  #marketing-creator-home .mc-app.collapsed .mc-collapse-label{display:none}
+  #marketing-creator-home .mc-app.collapsed .mc-nav button{justify-content:center}
+  #marketing-creator-home .mc-app.collapsed .mc-collapse-btn{justify-content:center;padding:8px}
+  #marketing-creator-home .mc-app.collapsed .mc-collapse-btn svg{transform:rotate(180deg)}
+}
+@media(max-width:850px){#marketing-creator-home .mc-collapse-btn{display:none}}
+
+/* 苹果式滚动动效（home-fx.js 负责加 .reveal/.is-in；无 JS 或减弱动态时内容直接可见） */
+#marketing-creator-home .reveal{opacity:0;transform:translateY(28px);transition:opacity .7s cubic-bezier(.22,.61,.36,1),transform .7s cubic-bezier(.22,.61,.36,1)}
+#marketing-creator-home .reveal.is-in{opacity:1;transform:none}
+@media(prefers-reduced-motion:reduce){
+  #marketing-creator-home .reveal{opacity:1;transform:none;transition:none}
+  #marketing-creator-home .mc-scroll-hint svg{animation:none}
+  #marketing-creator-home .mc-composer,#marketing-creator-home .mc-featured,#marketing-creator-home .mc-composer .mc-primary{transition:none}
+}
+
+@media(max-width:560px){
+  #marketing-creator-home .mc-hero{min-height:calc(100vh - 47px);padding-bottom:88px}
+  #marketing-creator-home .mc-home-head h1{font-size:34px}
+  #marketing-creator-home .mc-composer{padding:20px 20px 16px;border-radius:14px}
+  #marketing-creator-home .mc-prompt{font-size:16px;min-height:110px;padding:0}
+  #marketing-creator-home .mc-input-example{display:none}
+  #marketing-creator-home .mc-trust-row{gap:14px}
+  #marketing-creator-home .mc-gallery{padding:72px 0 88px}
+  #marketing-creator-home .mc-featured{min-height:300px;padding:28px 22px 26px}
+  #marketing-creator-home .mc-featured h3{font-size:20px}
+}
+
+/* v4 修正：压平背景与首页主按钮的渐变（taste-skill 检查项） */
+#marketing-creator-home .mc-app{background:var(--mc-paper)}
+#marketing-creator-home #mc-create-page .mc-primary{background:var(--mc-accent);box-shadow:none}
+#marketing-creator-home #mc-create-page .mc-primary:hover{background:#c20024}
+#marketing-creator-home .mc-nav button.is-active{box-shadow:none}
+#marketing-creator-home .mc-featured-tools .mc-definition dt{color:#4c5158}
+
+/* v4.1：推荐区加宽——卡片不再受 960px 容器限制 */
+#marketing-creator-home .mc-gallery{max-width:1240px}
+#marketing-creator-home .mc-featured{width:min(1240px,100%)}
+#marketing-creator-home #mc-opportunity-cards{width:100%;display:flex;flex-direction:column;align-items:center}
+
+/* ===== 首页改版 v5：Mesh Gradient + Glassmorphism；推荐区移至「推广机会」页 ===== */
+/* taste-skill-ignore: Mesh Gradient + Glassmorphism 为用户明确指定的视觉方向 */
+#marketing-creator-home .mc-app{
+  background:
+    radial-gradient(52% 46% at 16% 8%, rgba(228,0,43,.10), transparent 70%),
+    radial-gradient(46% 42% at 86% 10%, rgba(255,166,120,.32), transparent 70%),
+    radial-gradient(52% 48% at 82% 90%, rgba(140,160,255,.17), transparent 70%),
+    radial-gradient(48% 44% at 10% 92%, rgba(228,0,43,.06), transparent 70%),
+    #f7f7f8;
+}
+#marketing-creator-home .mc-side{background:rgba(249,250,251,.55);-webkit-backdrop-filter:blur(24px) saturate(1.4);backdrop-filter:blur(24px) saturate(1.4);border-right-color:rgba(255,255,255,.6)}
+#marketing-creator-home .mc-composer{background:rgba(255,255,255,.55);-webkit-backdrop-filter:blur(24px) saturate(1.5);backdrop-filter:blur(24px) saturate(1.5);border:1px solid rgba(255,255,255,.75);box-shadow:0 1px 2px rgba(23,23,25,.04),0 18px 48px rgba(23,23,25,.08)}
+#marketing-creator-home .mc-composer:hover{box-shadow:0 1px 2px rgba(23,23,25,.04),0 24px 64px rgba(23,23,25,.11)}
+#marketing-creator-home .mc-composer:focus-within{border-color:rgba(228,0,43,.65);box-shadow:0 0 0 2px rgba(228,0,43,.15),0 24px 64px rgba(23,23,25,.11)}
+#marketing-creator-home .mc-hero{padding-bottom:0}
+/* 推荐区已删除，以下规则失效但保留以兼容旧页面结构 */
+#marketing-creator-home .mc-hero{min-height:calc(100vh - 99px)}
+@media(max-width:560px){#marketing-creator-home .mc-hero{min-height:calc(100vh - 79px)}}
+#marketing-creator-home .mc-hero{min-height:calc(100vh - 115px)}
+
+/* v5.1：参考用户给的 Mesh Gradient 示例——更饱和流动、红色占比加大、玻璃低模糊 */
+/* taste-skill-ignore: Mesh Gradient 为用户指定风格，背景大色块为设计决策 */
+#marketing-creator-home .mc-app{
+  background:
+    radial-gradient(58% 52% at 14% 12%, rgba(232,40,70,.22), transparent 72%),
+    radial-gradient(52% 48% at 42% 26%, rgba(255,171,128,.48), transparent 72%),
+    radial-gradient(56% 52% at 88% 16%, rgba(203,184,250,.50), transparent 74%),
+    radial-gradient(62% 56% at 80% 92%, rgba(150,176,255,.42), transparent 74%),
+    radial-gradient(52% 46% at 18% 94%, rgba(244,140,165,.34), transparent 72%),
+    #faf6f4;
+}
+#marketing-creator-home .mc-side{background:rgba(250,248,247,.6);-webkit-backdrop-filter:blur(12px) saturate(1.3);backdrop-filter:blur(12px) saturate(1.3)}
+#marketing-creator-home .mc-composer{background:rgba(255,255,255,.62);-webkit-backdrop-filter:blur(10px) saturate(1.25);backdrop-filter:blur(10px) saturate(1.25);border:1px solid rgba(255,255,255,.8)}
+
+/* v5.2：纯红色系 Mesh Gradient——深红到浅红，去掉橙/蓝/紫 */
+/* taste-skill-ignore: 红色系网格渐变为用户指定风格 */
+#marketing-creator-home .mc-app{
+  background:
+    radial-gradient(60% 54% at 14% 10%, rgba(186,0,36,.26), transparent 72%),
+    radial-gradient(56% 50% at 86% 16%, rgba(228,0,43,.17), transparent 74%),
+    radial-gradient(60% 54% at 82% 90%, rgba(240,110,130,.28), transparent 74%),
+    radial-gradient(52% 46% at 16% 94%, rgba(255,186,192,.38), transparent 72%),
+    radial-gradient(46% 42% at 50% 45%, rgba(255,226,228,.30), transparent 75%),
+    #fbf5f5;
+}
+
+/* v5.2b：拉开深红到浅红的层次 */
+/* taste-skill-ignore: 用户指定红色系渐变 */
+#marketing-creator-home .mc-app{
+  background:
+    radial-gradient(66% 60% at 8% 4%, rgba(150,0,28,.40), transparent 74%),
+    radial-gradient(56% 50% at 30% 22%, rgba(228,0,43,.20), transparent 74%),
+    radial-gradient(50% 46% at 88% 20%, rgba(240,110,130,.22), transparent 74%),
+    radial-gradient(58% 52% at 84% 92%, rgba(250,170,180,.30), transparent 74%),
+    radial-gradient(50% 44% at 18% 96%, rgba(255,205,210,.40), transparent 72%),
+    radial-gradient(48% 42% at 52% 48%, rgba(255,240,241,.35), transparent 76%),
+    #faf3f3;
+}
+
+/* v5.3：从下到上的红色系 Mesh Gradient——底部深红 → 中部浅红 → 顶部白色 */
+/* taste-skill-ignore: 用户指定红色系渐变 */
+#marketing-creator-home .mc-app{
+  background:
+    radial-gradient(95% 60% at 18% 108%, rgba(150,0,28,.42), transparent 72%),
+    radial-gradient(90% 55% at 85% 106%, rgba(228,0,43,.28), transparent 72%),
+    radial-gradient(70% 45% at 55% 100%, rgba(240,110,130,.20), transparent 70%),
+    linear-gradient(to top, rgba(244,140,152,.14), rgba(255,255,255,0) 55%),
+    #ffffff;
+}
+
+/* v5.3b：底部深红压重，过渡带拉长 */
+/* taste-skill-ignore: 用户指定红色系渐变 */
+#marketing-creator-home .mc-app{
+  background:
+    radial-gradient(130% 85% at 15% 118%, rgba(150,0,28,.55), transparent 78%),
+    radial-gradient(120% 80% at 88% 114%, rgba(228,0,43,.38), transparent 76%),
+    radial-gradient(80% 55% at 55% 105%, rgba(240,110,130,.26), transparent 72%),
+    linear-gradient(to top, rgba(240,120,135,.22), rgba(255,255,255,0) 62%),
+    #ffffff;
+}
+
+/* v5.4：恢复最初的多色弥散渐变（低饱和四角色块） */
+/* taste-skill-ignore: Mesh Gradient 为用户指定风格 */
+#marketing-creator-home .mc-app{
+  background:
+    radial-gradient(52% 46% at 16% 8%, rgba(228,0,43,.10), transparent 70%),
+    radial-gradient(46% 42% at 86% 10%, rgba(255,166,120,.32), transparent 70%),
+    radial-gradient(52% 48% at 82% 90%, rgba(140,160,255,.17), transparent 70%),
+    radial-gradient(48% 44% at 10% 92%, rgba(228,0,43,.06), transparent 70%),
+    #f7f7f8;
+}
+
+/* v5.5：弥散渐变中强调华为红——红色块加重、蓝紫减弱 */
+/* taste-skill-ignore: Mesh Gradient 为用户指定风格 */
+#marketing-creator-home .mc-app{
+  background:
+    radial-gradient(56% 50% at 14% 8%, rgba(228,0,43,.22), transparent 72%),
+    radial-gradient(44% 40% at 40% 4%, rgba(228,0,43,.10), transparent 70%),
+    radial-gradient(46% 42% at 88% 12%, rgba(255,150,120,.26), transparent 70%),
+    radial-gradient(52% 48% at 84% 92%, rgba(140,160,255,.12), transparent 70%),
+    radial-gradient(52% 46% at 10% 92%, rgba(228,0,43,.16), transparent 72%),
+    #f8f5f5;
+}
+
+/* v5.6：弥散色块收拢——边缘更清晰，不再一片模糊 */
+/* taste-skill-ignore: Mesh Gradient 为用户指定风格 */
+#marketing-creator-home .mc-app{
+  background:
+    radial-gradient(42% 38% at 14% 10%, rgba(228,0,43,.34), transparent 62%),
+    radial-gradient(34% 30% at 42% 4%, rgba(228,0,43,.16), transparent 58%),
+    radial-gradient(36% 32% at 90% 14%, rgba(255,150,120,.34), transparent 60%),
+    radial-gradient(40% 36% at 86% 90%, rgba(140,160,255,.16), transparent 60%),
+    radial-gradient(40% 34% at 10% 90%, rgba(228,0,43,.24), transparent 62%),
+    #f8f5f5;
+}
+
+/* ===== 策略页精简 v6：删推荐理由/预计生成，强化方案说明+合规区块 ===== */
+#marketing-creator-home .mc-lead-block{margin-top:6px}
+#marketing-creator-home .mc-lead-label{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;letter-spacing:.02em;color:var(--mc-muted);margin-bottom:6px}
+#marketing-creator-home .mc-lead-label svg{width:14px;height:14px;flex:none}
+#marketing-creator-home .mc-lead-copy .mc-lead-idea{margin:0;font-size:15px;line-height:1.8}
+#marketing-creator-home .mc-lead-compliance{margin-top:14px;background:rgba(228,0,43,.05);border:1px solid rgba(228,0,43,.14);border-radius:12px;padding:12px 16px}
+#marketing-creator-home .mc-lead-compliance .mc-lead-label{color:#a30021}
+#marketing-creator-home .mc-lead-compliance ul{margin:0;padding-left:18px;font-size:13px;line-height:1.8;color:#454b54}
+#marketing-creator-home .mc-lead-compliance li+li{margin-top:2px}
+
+/* ===== 策略页 v7：AI 合规引导卡 + 已确认笔记 ===== */
+#marketing-creator-home .mc-compliance-coach{background:rgba(255,255,255,.55);-webkit-backdrop-filter:blur(14px) saturate(1.3);backdrop-filter:blur(14px) saturate(1.3);border:1px solid rgba(255,255,255,.75);border-radius:16px;padding:16px 18px;box-shadow:0 1px 2px rgba(23,23,25,.04),0 12px 32px rgba(23,23,25,.06)}
+#marketing-creator-home .mc-coach-question{margin:2px 0 12px;font-size:13.5px;line-height:1.8;color:#454b54}
+#marketing-creator-home .mc-compliance-coach .mc-adjust-row{display:flex;gap:10px;align-items:flex-end}
+#marketing-creator-home .mc-compliance-coach .mc-adjust-row .mc-field{flex:1}
+#marketing-creator-home .mc-adjust-more{margin-top:10px}
+#marketing-creator-home .mc-adjust-more>summary{cursor:pointer;font-size:12.5px;color:var(--mc-muted);width:fit-content}
+#marketing-creator-home .mc-adjust-more .mc-adjust-row{margin-top:10px}
+#marketing-creator-home .mc-note-confirmed{display:flex;align-items:flex-start;gap:6px;color:#1d7a3d}
+#marketing-creator-home .mc-note-confirmed svg{width:13px;height:13px;flex:none;margin-top:4px}
+
+/* ===== 成果页 v8：左右卡等高 + 与全站统一的玻璃语言 ===== */
+#marketing-creator-home .mc-results-workbench{align-items:stretch}
+#marketing-creator-home .mc-results-workbench .mc-result-art-column,
+#marketing-creator-home .mc-results-workbench>.mc-panel{display:flex;flex-direction:column}
+#marketing-creator-home .mc-results-workbench .mc-result-artwork{flex:1;display:flex;flex-direction:column}
+#marketing-creator-home .mc-results-workbench .mc-editor{height:100%;box-sizing:border-box;display:flex;flex-direction:column}
+#marketing-creator-home .mc-results-workbench .mc-editor textarea#output-body{flex:1;min-height:220px;max-height:none;resize:vertical}
+/* 玻璃拟态统一 */
+#marketing-creator-home .mc-results-page .mc-page-head h1{font-family:"Songti SC","Noto Serif SC","STSong",serif;font-size:34px;font-weight:700;letter-spacing:0}
+#marketing-creator-home .mc-results-workbench .mc-panel{background:rgba(255,255,255,.55);-webkit-backdrop-filter:blur(16px) saturate(1.3);backdrop-filter:blur(16px) saturate(1.3);border:1px solid rgba(255,255,255,.75);border-radius:18px;box-shadow:0 1px 2px rgba(23,23,25,.04),0 14px 40px rgba(23,23,25,.07)}
+#marketing-creator-home .mc-results-page .mc-brief-strip,#marketing-creator-home .mc-results-page .mc-output-brief{background:rgba(255,255,255,.5);-webkit-backdrop-filter:blur(12px) saturate(1.25);backdrop-filter:blur(12px) saturate(1.25);border:1px solid rgba(255,255,255,.7);border-radius:14px}
+
+/* ===== 成果页 v9：单卡 预览/编辑 选项卡 ===== */
+#marketing-creator-home .mc-results-workbench{grid-template-columns:minmax(0,1fr)}
+#marketing-creator-home .mc-result-merged{max-width:960px;margin:0 auto;width:100%}
+#marketing-creator-home .mc-result-tabs{display:flex;background:rgba(23,23,25,.06);border-radius:999px;padding:3px;gap:2px;flex:none}
+#marketing-creator-home .mc-result-tabs .mc-tab{border-radius:999px;padding:6px 16px;min-height:32px;font-size:13px;color:var(--mc-muted);background:transparent;box-shadow:none}
+#marketing-creator-home .mc-result-tabs .mc-tab.is-active{background:#fff;color:var(--mc-accent);font-weight:600;box-shadow:0 1px 3px rgba(23,23,25,.14)}
+#marketing-creator-home .mc-result-merged[data-tab="preview"] .mc-pane-edit{display:none}
+#marketing-creator-home .mc-result-merged[data-tab="edit"] .mc-pane-preview{display:none}
+#marketing-creator-home .mc-pane-bar{display:flex;justify-content:flex-end;align-items:center;gap:10px;margin-bottom:8px}
+#marketing-creator-home .mc-pane-bar h3{margin:0 auto 0 0;font-size:15px}
+#marketing-creator-home .mc-pane-edit textarea#output-body{min-height:280px}
+#marketing-creator-home .mc-result-shared{margin-top:6px}
+
+/* ===== 成果页 v10：加宽双栏预览 + 衬线大标题 + 3D 环形多图 ===== */
+#marketing-creator-home .mc-result-merged{max-width:1200px}
+#marketing-creator-home .mc-result-merged .mc-panel-heading h2{font-family:"Songti SC","Noto Serif SC","STSong",serif;font-size:26px;font-weight:700;letter-spacing:0}
+@media(min-width:1180px){
+  #marketing-creator-home .mc-pane-preview .mc-publication-card{display:grid;grid-template-columns:1.15fr minmax(0,1fr);gap:28px;align-items:start}
+  #marketing-creator-home .mc-pane-preview .mc-result-poster{margin:0}
+}
+#marketing-creator-home .mc-pane-preview{perspective:1200px}
+#marketing-creator-home .mc-result-thumbnails.mc-ring{position:relative;height:230px;transform-style:preserve-3d;margin-top:18px;touch-action:pan-y;cursor:grab}
+#marketing-creator-home .mc-result-thumbnails.mc-ring.is-dragging{cursor:grabbing}
+#marketing-creator-home .mc-ring .mc-result-thumb{transition:transform .5s cubic-bezier(.22,.8,.3,1),opacity .5s}
+#marketing-creator-home .mc-ring.is-dragging .mc-result-thumb{transition:none}
+#marketing-creator-home .mc-ring .mc-result-thumb{position:absolute;left:50%;top:50%;width:230px;height:140px;margin:-70px 0 0 -115px;padding:0;border-radius:14px;overflow:hidden;border:1px solid rgba(255,255,255,.8);box-shadow:0 10px 30px rgba(23,23,25,.16);background:#fff;backface-visibility:visible;cursor:pointer}
+#marketing-creator-home .mc-ring .mc-result-thumb img{width:100%;height:100%;object-fit:cover;display:block;pointer-events:none}
+#marketing-creator-home .mc-ring .mc-result-thumb span{position:absolute;left:8px;bottom:8px;background:rgba(23,23,25,.55);color:#fff;font-size:11px;border-radius:999px;padding:2px 8px;pointer-events:none}
+#marketing-creator-home .mc-ring .mc-result-thumb.is-selected{box-shadow:0 14px 36px rgba(228,0,43,.22);border-color:rgba(228,0,43,.45)}
+
+/* ===== 成果页 v11：作品区独立（淘宝式浏览）+ 选项卡只留文案/素材 ===== */
+#marketing-creator-home .mc-result-stage{max-width:1200px;margin:0 auto 22px;width:100%}
+#marketing-creator-home .mc-stage-head{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:14px}
+#marketing-creator-home .mc-stage-head h2{font-family:"Songti SC","Noto Serif SC","STSong",serif;font-size:26px;font-weight:700;letter-spacing:0;margin:0}
+#marketing-creator-home .mc-stage-head .mc-muted{margin:6px 0 0}
+@media(min-width:1180px){
+  #marketing-creator-home .mc-result-stage .mc-publication-card{display:grid;grid-template-columns:1.15fr minmax(0,1fr);gap:28px;align-items:start}
+  #marketing-creator-home .mc-result-stage .mc-result-poster{margin:0}
+}
+#marketing-creator-home .mc-result-stage .mc-publication-preview{background:rgba(255,255,255,.55);-webkit-backdrop-filter:blur(16px) saturate(1.3);backdrop-filter:blur(16px) saturate(1.3);border:1px solid rgba(255,255,255,.75);border-radius:18px;padding:20px 22px;box-shadow:0 1px 2px rgba(23,23,25,.04),0 14px 40px rgba(23,23,25,.07)}
+#marketing-creator-home .mc-result-stage .mc-artwork-actions,#marketing-creator-home .mc-result-stage .mc-image-plan{max-width:1200px}
+#marketing-creator-home .mc-result-merged[data-tab="edit"] .mc-pane-material{display:none}
+#marketing-creator-home .mc-result-merged[data-tab="material"] .mc-pane-edit{display:none}
+#marketing-creator-home .mc-pane-material .mc-image-options{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin:12px 0}
+
+/* ===== 成果页 v12：横向视差滑动（Apple 风，替代扇形环） ===== */
+#marketing-creator-home .mc-result-thumbnails.mc-slider{position:relative;height:auto;overflow:hidden;margin-top:18px;cursor:grab;touch-action:pan-y;-webkit-user-select:none;user-select:none;padding:6px 0 14px;
+  -webkit-mask-image:linear-gradient(90deg,transparent,#000 12%,#000 88%,transparent);mask-image:linear-gradient(90deg,transparent,#000 12%,#000 88%,transparent)}
+#marketing-creator-home .mc-result-thumbnails.mc-slider.is-dragging{cursor:grabbing}
+#marketing-creator-home .mc-slider-track{display:flex;gap:16px;align-items:center;will-change:transform;width:max-content}
+#marketing-creator-home .mc-slider .mc-result-thumb{position:relative;flex:0 0 min(52%,320px);aspect-ratio:8/5;width:auto;height:auto;margin:0;padding:0;border-radius:14px;overflow:hidden;border:1px solid rgba(255,255,255,.8);box-shadow:0 8px 24px rgba(23,23,25,.12);background:#fff;cursor:pointer;transition:opacity .3s}
+#marketing-creator-home .mc-slider .mc-result-thumb img{width:100%;height:100%;object-fit:cover;display:block;pointer-events:none;will-change:transform}
+#marketing-creator-home .mc-slider .mc-result-thumb span{position:absolute;left:8px;bottom:8px;background:rgba(23,23,25,.55);color:#fff;font-size:11px;border-radius:999px;padding:2px 8px;pointer-events:none;z-index:2}
+#marketing-creator-home .mc-slider .mc-result-thumb.is-selected{box-shadow:0 12px 30px rgba(228,0,43,.2);border-color:rgba(228,0,43,.45)}
+@media (prefers-reduced-motion: reduce){
+  #marketing-creator-home .mc-slider .mc-result-thumb,#marketing-creator-home .mc-slider .mc-result-thumb img,#marketing-creator-home .mc-slider-track{transition:none !important}
+}
+
+/* ===== 成果页 v13：预览区只留图片，文案内联编辑，取消选项卡 ===== */
+#marketing-creator-home .mc-result-stage .mc-publication-card{display:block !important}
+#marketing-creator-home .mc-result-stage .mc-result-poster{max-width:860px;margin:0 auto}
+#marketing-creator-home .mc-stage-replace{max-width:1200px;margin-top:20px}
+#marketing-creator-home .mc-stage-replace h3{font-size:14px;font-weight:600;margin:0 0 4px}
+#marketing-creator-home .mc-stage-replace .mc-image-options{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin:10px 0 6px}
+#marketing-creator-home .mc-result-copy{max-width:1200px;margin:0 auto;width:100%}
+#marketing-creator-home .mc-result-copy>.mc-pane-bar{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px}
+#marketing-creator-home .mc-result-copy>.mc-pane-bar h3{font-family:"Songti SC","Noto Serif SC","STSong",serif;font-size:22px;font-weight:700;margin:0}
+
+/* ===== 成果页 v14：AI 备选无边框画廊 ===== */
+#marketing-creator-home .mc-stage-replace .mc-image-options{grid-template-columns:repeat(3,minmax(0,1fr));gap:24px;max-width:640px}
+#marketing-creator-home .mc-stage-replace .mc-image-choice{width:auto;padding:0;border:none;background:transparent;gap:8px;color:#5b6470;min-height:0}
+#marketing-creator-home .mc-stage-replace .mc-image-choice img{border-radius:10px;transition:transform .32s cubic-bezier(.22,.8,.3,1)}
+#marketing-creator-home .mc-stage-replace .mc-image-choice:hover img{transform:scale(1.035)}
+#marketing-creator-home .mc-stage-replace .mc-image-choice span{font-size:12px;line-height:1.5;padding:0;display:flex;align-items:center;gap:7px}
+#marketing-creator-home .mc-stage-replace .mc-image-choice.is-selected{border:none;background:transparent;color:#c8102e;font-weight:600}
+#marketing-creator-home .mc-stage-replace .mc-image-choice.is-selected span::before{content:"";flex:none;width:6px;height:6px;border-radius:50%;background:#e4002b}
+#marketing-creator-home .mc-stage-replace .mc-image-choice:focus-visible{outline:2px solid rgba(228,0,43,.5);outline-offset:4px;border-radius:10px}
+@media (prefers-reduced-motion: reduce){
+  #marketing-creator-home .mc-stage-replace .mc-image-choice img{transition:none}
+  #marketing-creator-home .mc-stage-replace .mc-image-choice:hover img{transform:none}
+}
+
+/* ===== 成果页 v15：主预览图去白卡，图片悬浮 ===== */
+#marketing-creator-home .mc-result-stage .mc-publication-preview{background:transparent;-webkit-backdrop-filter:none;backdrop-filter:none;border:none;box-shadow:none;padding:0}
+#marketing-creator-home .mc-result-stage .mc-publication-card{border:none;background:transparent}
+#marketing-creator-home .mc-result-stage .mc-result-poster{border:none;border-radius:16px;background:#fff;box-shadow:0 2px 6px rgba(23,23,25,.05),0 24px 60px rgba(23,23,25,.13);transition:transform .4s cubic-bezier(.22,.8,.3,1),box-shadow .4s cubic-bezier(.22,.8,.3,1)}
+#marketing-creator-home .mc-result-stage .mc-result-poster:hover{transform:translateY(-6px);box-shadow:0 4px 10px rgba(23,23,25,.06),0 34px 80px rgba(23,23,25,.17)}
+#marketing-creator-home .mc-result-stage .mc-preview-heading{padding:0 4px}
+@media (prefers-reduced-motion: reduce){
+  #marketing-creator-home .mc-result-stage .mc-result-poster{transition:none}
+  #marketing-creator-home .mc-result-stage .mc-result-poster:hover{transform:none}
+}
+
+/* ===== 成果页 v16：发布文案文档式编辑区 ===== */
+#marketing-creator-home .mc-results-workbench .mc-result-copy{background:transparent;-webkit-backdrop-filter:none;backdrop-filter:none;border:none;box-shadow:none;padding:0;margin-top:34px}
+#marketing-creator-home .mc-result-copy>.mc-pane-bar{align-items:flex-start;gap:18px}
+#marketing-creator-home .mc-result-copy .mc-regen-note{margin:6px 0 0;max-width:520px;font-size:12px;line-height:1.6}
+#marketing-creator-home .mc-result-copy .mc-pane-bar .mc-link{flex:none}
+#marketing-creator-home .mc-doc-editor{padding:6px 0 0;border-top:1px solid rgba(23,23,25,.09);margin-top:14px}
+#marketing-creator-home .mc-doc-title{width:100%;border:none;background:transparent;font-family:"Songti SC","Noto Serif SC","STSong",serif;font-size:26px;font-weight:700;line-height:1.4;color:#1d2126;padding:14px 0 4px;outline:none}
+#marketing-creator-home .mc-doc-title:focus{border-bottom:1px solid rgba(228,0,43,.35)}
+#marketing-creator-home .mc-doc-body{width:100%;border:none;background:transparent;font-size:15px;line-height:1.95;color:#333a42;padding:12px 0 8px;min-height:180px;resize:vertical;outline:none;font-family:inherit}
+#marketing-creator-home .mc-doc-body:focus{background:linear-gradient(180deg,rgba(255,255,255,.35),transparent 60px)}
+#marketing-creator-home .mc-result-copy .mc-editor-meta{display:flex;justify-content:space-between;font-size:11px;color:#9aa2ab;padding:8px 0 0;border-top:1px dashed rgba(23,23,25,.08)}
+#marketing-creator-home .mc-copy-undo{display:flex;gap:16px;margin-top:6px}
+#marketing-creator-home .mc-result-copy .mc-delivery{display:flex;align-items:center;gap:18px;margin-top:18px;flex-wrap:wrap}
+#marketing-creator-home .mc-result-copy .mc-delivery .mc-primary{padding:10px 26px;border-radius:999px}
+#marketing-creator-home .mc-result-copy .mc-delivery-secondary{display:inline-flex;align-items:center;gap:16px}
+#marketing-creator-home .mc-result-copy .mc-delivery-secondary .mc-link{font-size:13px}
+#marketing-creator-home .mc-result-copy .mc-copy-options{display:inline-block}
+#marketing-creator-home .mc-result-copy .mc-fold{margin-top:14px;border-top:1px solid rgba(23,23,25,.07);padding-top:2px;display:block}
+#marketing-creator-home .mc-result-copy .mc-fold>summary{font-size:13px;font-weight:600;color:#5b6470;padding:10px 0;cursor:pointer;margin-bottom:0}
+#marketing-creator-home .mc-result-copy .mc-image-text-fields>div{display:grid;grid-template-columns:1fr 1fr;gap:10px 18px;padding:2px 0 12px}
+#marketing-creator-home .mc-result-copy .mc-fold .mc-field span{font-size:12px;color:#7a828c}
+#marketing-creator-home .mc-result-copy .mc-fold .mc-field input,#marketing-creator-home .mc-result-copy .mc-fold .mc-field textarea,#marketing-creator-home .mc-result-copy .mc-fold .mc-field select{background:rgba(255,255,255,.55);border:1px solid rgba(23,23,25,.08);border-radius:10px}
+@media(max-width:720px){#marketing-creator-home .mc-result-copy .mc-image-text-fields>div{grid-template-columns:1fr}}
+#marketing-creator-home .mc-checks .mc-checks-body{display:flex;flex-direction:column;gap:4px;padding:4px 0 10px}
+#marketing-creator-home .mc-checks .mc-result-evidence,#marketing-creator-home .mc-checks .mc-result-compliance,#marketing-creator-home .mc-checks .mc-result-fact-details{border:none;background:transparent;padding:0;margin:0;box-shadow:none}
+#marketing-creator-home .mc-checks .mc-result-evidence>summary,#marketing-creator-home .mc-checks .mc-result-compliance>summary,#marketing-creator-home .mc-checks .mc-result-fact-details>summary{font-size:12px;color:#7a828c;padding:8px 0}
+@media(max-width:720px){
+  #marketing-creator-home .mc-doc-title{font-size:22px}
+  #marketing-creator-home .mc-result-copy>.mc-pane-bar{flex-direction:column;align-items:flex-start;gap:8px}
+}
+
+/* ===== 成果页 v17：图片文字图上直接编辑 ===== */
+#marketing-creator-home .mc-result-poster-copy>input{width:100%;border:none;background:transparent;outline:none;font-family:inherit;padding:2px 6px;margin:0 -6px;border-radius:8px;transition:background .25s ease,box-shadow .25s ease;cursor:text}
+#marketing-creator-home .mc-result-poster-copy>input:hover{background:rgba(240,243,245,.7)}
+#marketing-creator-home .mc-result-poster-copy>input:focus{background:#f4f6f7;box-shadow:0 0 0 1.5px rgba(228,0,43,.35)}
+#marketing-creator-home .mc-result-poster-copy>.mc-poster-headline{font-size:clamp(22px,2vw,30px);font-weight:600;line-height:1.45;color:#252d34;letter-spacing:-.025em}
+#marketing-creator-home .mc-results-workbench .mc-result-poster-copy>.mc-poster-headline{font-size:24px}
+#marketing-creator-home .mc-result-poster-copy>.mc-poster-subline{font-size:12px;line-height:1.8;color:#55616c}
+#marketing-creator-home .mc-publication-preview[data-platform='视频号'] .mc-result-poster-copy>.mc-poster-headline{font-size:20px}
+@media(max-width:560px){#marketing-creator-home .mc-results-workbench .mc-result-poster-copy>.mc-poster-headline{font-size:22px}}
+
+/* ===== 地图选址流程（契约 v0.1：search → nearby → context）===== */
+#marketing-creator-home .mc-geo-search{padding:14px 16px;border:1px solid #e1e6e7;border-radius:12px;background:#fbfdfd;margin-bottom:14px}
+#marketing-creator-home .mc-geo-search-row{display:grid;grid-template-columns:minmax(120px,180px) 1fr auto;gap:12px;align-items:end}
+#marketing-creator-home .mc-geo-search-tools{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:10px}
+#marketing-creator-home .mc-geo-search-tools .mc-muted{font-size:12px;line-height:1.6}
+#marketing-creator-home .mc-geo-error{margin-top:10px;padding:8px 12px;border:1px solid #f0c9c9;background:#fdf3f3;border-radius:8px;font-size:13px;color:#8f3535;line-height:1.7}
+#marketing-creator-home .mc-geo-empty{margin:10px 0;padding:12px;border:1px dashed #d4ddda;border-radius:10px;color:#5f6b66;font-size:13px}
+#marketing-creator-home .mc-geo-candidates{display:grid;gap:8px;margin-bottom:14px}
+#marketing-creator-home .mc-geo-candidate{display:flex;flex-direction:column;gap:3px;text-align:left;padding:10px 14px;border:1px solid #dfe6e5;border-radius:10px;background:#fff;cursor:pointer;transition:border-color var(--mc-motion),box-shadow var(--mc-motion)}
+#marketing-creator-home .mc-geo-candidate:hover{border-color:#b9c6c2}
+#marketing-creator-home .mc-geo-candidate.is-active{border-color:var(--mc-accent);box-shadow:0 0 0 1px var(--mc-accent)}
+#marketing-creator-home .mc-geo-candidate strong{font-size:14px;color:#25313b}
+#marketing-creator-home .mc-geo-candidate span{font-size:13px;color:#4c5760}
+#marketing-creator-home .mc-geo-candidate small{font-size:11px;color:#7b8681}
+#marketing-creator-home .mc-geo-store{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;padding:10px 14px;margin-bottom:12px;border:1px solid #ead9dc;background:#fdf7f8;border-radius:10px}
+#marketing-creator-home .mc-geo-store strong{font-size:15px}
+#marketing-creator-home .mc-geo-radius{margin-bottom:8px}
+#marketing-creator-home .mc-geo-nearby-head{display:flex;align-items:baseline;gap:10px;margin:12px 0 4px}
+#marketing-creator-home .mc-geo-nearby-head .mc-muted{font-size:12px}
+#marketing-creator-home .mc-geo-limitations{margin:10px 0 0;font-size:12px;line-height:1.7}
+#marketing-creator-home .mc-geo-plan{margin-top:16px;padding:14px 16px;border:1px solid #e1e6e7;border-radius:12px;background:#fbfdfd}
+#marketing-creator-home .mc-geo-plan-head{display:flex;flex-direction:column;gap:4px;margin-bottom:10px}
+#marketing-creator-home .mc-geo-plan-head .mc-muted{font-size:12px;line-height:1.7}
+#marketing-creator-home .mc-geo-plan-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+#marketing-creator-home .mc-geo-plan-actions .mc-muted{font-size:12px}
+#marketing-creator-home .mc-map-marker span.mc-cat-school{background:#e8f0fb;border-color:#c8dbf5}
+#marketing-creator-home .mc-map-marker span.mc-cat-office{background:#eaf5ee;border-color:#cbe5d4}
+#marketing-creator-home .mc-map-marker span.mc-cat-mall{background:#fdeef0;border-color:#f3cdd3}
+#marketing-creator-home .mc-map-marker span.mc-cat-residential{background:#f0f1f2;border-color:#d5d9db}
+#marketing-creator-home .mc-map-marker span.mc-cat-transit{background:#fdf3e3;border-color:#ecd3a8}
+#marketing-creator-home .mc-place-chip-badge.school{background:#e8f0fb;border-color:#c8dbf5}
+#marketing-creator-home .mc-place-chip-badge.office{background:#eaf5ee;border-color:#cbe5d4}
+#marketing-creator-home .mc-place-chip-badge.mall{background:#fdeef0;border-color:#f3cdd3}
+#marketing-creator-home .mc-place-chip-badge.residential{background:#f0f1f2;border-color:#d5d9db}
+#marketing-creator-home .mc-place-chip-badge.transit{background:#fdf3e3;border-color:#ecd3a8}
+#marketing-creator-home .mc-geo-context{margin-bottom:18px;padding:14px 18px;border:1px solid #dfe6e5;border-left:3px solid var(--mc-accent);border-radius:10px;background:#fff}
+#marketing-creator-home .mc-geo-context[data-demo="1"]{border-left-color:#c9a227}
+#marketing-creator-home .mc-geo-context-head{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+#marketing-creator-home .mc-geo-context-head svg{width:16px;height:16px;color:var(--mc-accent)}
+#marketing-creator-home .mc-geo-context-head strong{font-size:14px}
+#marketing-creator-home .mc-geo-context-head .mc-tag{margin-left:auto}
+#marketing-creator-home .mc-geo-context .mc-definition{margin:0 0 8px}
+#marketing-creator-home .mc-geo-context code{font-size:11px;background:#f2f4f6;padding:2px 6px;border-radius:4px;overflow-wrap:anywhere}
+#marketing-creator-home .mc-geo-context>.mc-muted{font-size:12px;line-height:1.7;margin:0}
+@media(max-width:700px){#marketing-creator-home .mc-geo-search-row{grid-template-columns:1fr}#marketing-creator-home .mc-geo-store{flex-direction:column;align-items:flex-start;gap:4px}}
+
+/* 门店地图截图（演示素材） */
+#marketing-creator-home .mc-geo-shot{margin:10px 0 0}
+#marketing-creator-home .mc-geo-shot img{display:block;width:100%;max-width:560px;border:1px solid #dfe6e5;border-radius:8px}
+#marketing-creator-home .mc-geo-shot figcaption{margin-top:6px;font-size:12px;color:#7a8589;line-height:1.6}
+#marketing-creator-home .mc-geo-context-shot img{max-width:480px}
+@media(max-width:700px){#marketing-creator-home .mc-geo-shot img{max-width:100%}}
+
+/* 初始态大幅地图截图（演示素材） */
+#marketing-creator-home .mc-geo-shot-hero img{max-width:100%;max-height:430px;object-fit:cover}
