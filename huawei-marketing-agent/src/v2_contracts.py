@@ -6,6 +6,8 @@ from typing import Any, Dict, List, Literal, Optional, TypedDict
 
 FieldName = Literal["product_query", "audience", "platform", "goal", "scene", "constraints"]
 FieldStatus = Literal["unset", "confirmed", "cleared"]
+ScenarioSource = Literal["user_input", "opportunity"]
+ScenarioVerificationStatus = Literal["unverified"]
 WorkflowStatus = Literal[
     "collecting_requirements", "researching", "ready_for_strategy",
     "awaiting_user_confirmation", "strategy_confirmed", "failed",
@@ -15,6 +17,17 @@ CheckStatus = Literal["supported", "unsupported", "conflicting", "needs_confirma
 
 FIELD_NAMES = ("product_query", "audience", "platform", "goal", "scene", "constraints")
 FIELD_STATUSES = ("unset", "confirmed", "cleared")
+SCENARIO_CLEAR_FIELDS = (
+    "scenario_inputs.time", "scenario_inputs.time.text",
+    "scenario_inputs.store", "scenario_inputs.store.location_text",
+    "scenario_inputs.store.nearby_landmarks",
+    "scenario_inputs.usage", "scenario_inputs.usage.text",
+)
+CARD_FIELDS = {
+    "scenario_inputs.time.text", "scenario_inputs.store.location_text",
+    "scenario_inputs.store.nearby_landmarks", "scenario_inputs.usage.text",
+}
+QUESTION_FIELDS = set(FIELD_NAMES) | CARD_FIELDS
 WORKFLOW_STATUSES = (
     "collecting_requirements", "researching", "ready_for_strategy",
     "awaiting_user_confirmation", "strategy_confirmed", "failed",
@@ -37,6 +50,48 @@ class FieldStatuses(TypedDict):
     goal: FieldStatus
     scene: FieldStatus
     constraints: FieldStatus
+
+
+class ScenarioTextInput(TypedDict):
+    text: str
+    field_status: FieldStatus
+    source: ScenarioSource
+    verification_status: ScenarioVerificationStatus
+
+
+class ScenarioStoreInput(TypedDict):
+    location_text: str
+    location_status: FieldStatus
+    nearby_landmarks: List[str]
+    nearby_landmarks_status: FieldStatus
+    source: ScenarioSource
+    verification_status: ScenarioVerificationStatus
+
+
+class ScenarioInputs(TypedDict):
+    time: ScenarioTextInput
+    store: ScenarioStoreInput
+    usage: ScenarioTextInput
+
+
+class QuestionCardOption(TypedDict):
+    option_id: str
+    label: str
+
+
+class QuestionCard(TypedDict):
+    question_id: str
+    issued_revision: int
+    field: str
+    prompt: str
+    mode: Literal["single", "multiple"]
+    options: List[QuestionCardOption]
+    allow_free_text: bool
+
+
+class CardAnswer(TypedDict):
+    question_id: str
+    option_ids: List[str]
 
 
 class FactRecord(TypedDict):
@@ -122,7 +177,9 @@ class TaskContext(TypedDict):
     goal: str
     scene: str
     constraints: List[str]
+    scenario_inputs: ScenarioInputs
     field_status: FieldStatuses
+    question_cards: List[QuestionCard]
     excluded_scenes: List[str]
     opportunity_context: Optional[Dict[str, Any]]
     fact_records: List[FactRecord]
@@ -227,9 +284,18 @@ def validate_task_context(value: Any) -> TaskContext:
         "platform", "goal", "scene", "constraints", "field_status", "excluded_scenes",
         "opportunity_context", "fact_records", "current_strategy_id", "current_strategy_version", "workflow_status",
     }
-    if set(value) != required:
+    optional = {"scenario_inputs", "question_cards"}
+    if not required <= set(value) or set(value) - required - optional:
         raise ContractValidationError("TaskContext 字段不符合契约。")
     task = dict(value)
+    task.setdefault("scenario_inputs", {
+        "time": {"text": "", "field_status": "unset", "source": "user_input", "verification_status": "unverified"},
+        "store": {"location_text": "", "location_status": "unset", "nearby_landmarks": [],
+                  "nearby_landmarks_status": "unset", "source": "user_input", "verification_status": "unverified",
+                  },
+        "usage": {"text": "", "field_status": "unset", "source": "user_input", "verification_status": "unverified"},
+    })
+    task.setdefault("question_cards", [])
     _string(task["task_id"], "task_id", max_length=120)
     _positive_int(task["revision"], "revision")
     if task["source"] not in {"direct", "opportunity"}:
@@ -239,6 +305,36 @@ def validate_task_context(value: Any) -> TaskContext:
         _string(task[name], name, allow_empty=True)
     _string_list(task["constraints"], "constraints")
     _string_list(task["excluded_scenes"], "excluded_scenes")
+    scenario = task["scenario_inputs"]
+    if not isinstance(scenario, dict) or set(scenario) != {"time", "store", "usage"}:
+        raise ContractValidationError("scenario_inputs 必须包含 time、store 和 usage。")
+    for name in ("time", "usage"):
+        item = scenario[name]
+        if not isinstance(item, dict) or set(item) != {"text", "field_status", "source", "verification_status"}:
+            raise ContractValidationError(f"scenario_inputs.{name} 字段无效。")
+        _string(item["text"], f"scenario_inputs.{name}.text", allow_empty=True, max_length=2000)
+        if item["field_status"] not in FIELD_STATUSES:
+            raise ContractValidationError(f"scenario_inputs.{name}.field_status 无效。")
+        if (item["field_status"] == "confirmed") != bool(item["text"]):
+            raise ContractValidationError(f"scenario_inputs.{name}.field_status 与值不一致。")
+        if item["source"] not in {"user_input", "opportunity"} or item["verification_status"] != "unverified":
+            raise ContractValidationError(f"scenario_inputs.{name} 来源或核验状态无效。")
+    store = scenario["store"]
+    if not isinstance(store, dict):
+        raise ContractValidationError("scenario_inputs.store 字段无效。")
+    # Additive defaults keep earlier v2 snapshots and fixtures readable.
+    if set(store) != {"location_text", "location_status", "nearby_landmarks", "nearby_landmarks_status", "source", "verification_status"}:
+        raise ContractValidationError("scenario_inputs.store 字段无效。")
+    _string(store["location_text"], "scenario_inputs.store.location_text", allow_empty=True, max_length=1000)
+    _string_list(store["nearby_landmarks"], "scenario_inputs.store.nearby_landmarks")
+    if len(store["nearby_landmarks"]) > 20 or any(len(item) > 200 for item in store["nearby_landmarks"]):
+        raise ContractValidationError("附近地标数量或长度超出限制。")
+    for status_name, value in (("location_status", store["location_text"]),
+                               ("nearby_landmarks_status", store["nearby_landmarks"])):
+        if store[status_name] not in FIELD_STATUSES or (store[status_name] == "confirmed") != bool(value):
+            raise ContractValidationError(f"scenario_inputs.store.{status_name} 与值不一致。")
+    if store["source"] not in {"user_input", "opportunity"} or store["verification_status"] != "unverified":
+        raise ContractValidationError("scenario_inputs.store 来源或核验状态无效。")
     statuses = task["field_status"]
     if not isinstance(statuses, dict) or set(statuses) != set(FIELD_NAMES):
         raise ContractValidationError("field_status 必须逐项覆盖当前可编辑字段。")
@@ -250,6 +346,39 @@ def validate_task_context(value: Any) -> TaskContext:
         has_value = bool(values[name])
         if (status == "confirmed") != has_value:
             raise ContractValidationError(f"field_status.{name} 与当前有效值不一致。")
+    cards = task["question_cards"]
+    if not isinstance(cards, list) or len(cards) > 1:
+        raise ContractValidationError("question_cards 每轮最多包含一张卡片。")
+    card_ids = set()
+    for card in cards:
+        if not isinstance(card, dict) or set(card) != {
+            "question_id", "issued_revision", "field", "prompt", "mode", "options", "allow_free_text",
+        }:
+            raise ContractValidationError("question_cards 项字段无效。")
+        _string(card["question_id"], "question_id", max_length=120)
+        _positive_int(card["issued_revision"], "issued_revision")
+        if card["issued_revision"] != task["revision"]:
+            raise ContractValidationError("question_cards 必须绑定当前任务版本。")
+        if card["field"] not in CARD_FIELDS:
+            raise ContractValidationError("question_cards.field 不受支持。")
+        _string(card["prompt"], "question_cards.prompt", max_length=500)
+        if card["mode"] not in {"single", "multiple"} or not isinstance(card["allow_free_text"], bool):
+            raise ContractValidationError("question_cards 选择模式或自由输入标记无效。")
+        options = card["options"]
+        if not isinstance(options, list) or not options or len(options) > 20:
+            raise ContractValidationError("question_cards.options 必须包含 1 至 20 项。")
+        option_ids = set()
+        for option in options:
+            if not isinstance(option, dict) or set(option) != {"option_id", "label"}:
+                raise ContractValidationError("question_cards.option 字段无效。")
+            _string(option["option_id"], "option_id", max_length=120)
+            _string(option["label"], "option.label", max_length=200)
+            if option["option_id"] in option_ids:
+                raise ContractValidationError("question_cards.option_id 不能重复。")
+            option_ids.add(option["option_id"])
+        if card["question_id"] in card_ids:
+            raise ContractValidationError("question_cards.question_id 不能重复。")
+        card_ids.add(card["question_id"])
     turns = task["conversation"]
     if not isinstance(turns, list) or len(turns) > 500:
         raise ContractValidationError("conversation 必须是有限长度的数组。")

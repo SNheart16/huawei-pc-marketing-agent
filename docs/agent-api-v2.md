@@ -45,6 +45,49 @@ strategy/generate → strategy/confirm → strategy/handoff →
 
 机会上下文只允许填充 `unset` 字段，不能覆盖用户已确认或已清空的字段。模型的问题仅作建议，服务端按当前缺失字段选取一个核心问题，避免重复询问已知内容。模型调用成功也不会将任何产品事实标记为已核验。一次成功的理解会增加 revision；continue 保存本轮输入和理解结果会各增加一次，调用方必须使用返回的 revision，不能硬编码版本号。
 
+#### 当前会话卡片与结构化场景
+
+`understand` 可选接收 `scenario_inputs`；`continue` 可选接收同样的字段以及 `card_answers`。只提交用户提供的原始文本，不提交 `source`、`field_status` 或 `verification_status`：这些均由服务端管理。接受的输入路径是 `time.text`、`store.location_text`、`store.nearby_landmarks`、`usage.text`。时间/使用文本最多 2000 字符，门店位置最多 1000 字符，地标最多 20 项、每项 200 字符。地标数组更新采用整体替换并去重；要清空请用 `clear_fields`，不要发送空数组或空字符串。
+
+`TaskContext.scenario_inputs` 响应包含 `time`、`store`、`usage` 三组，并分别返回当前值、字段状态和服务端 provenance。来源为 `user_input` 或 `opportunity`，`verification_status` 始终是 `unverified`。这只描述需求信息来源，不代表地理事实或产品事实已核验；系统不会据位置推断距离、客流、附近设施、学生人数或购买意愿。
+
+`scene` 继续表示既有营销/推广场景，保持兼容且仍参与核心需求完整性判断；`scenario_inputs.usage.text` 表示顾客实际使用电脑的场景。`time` 是推广时间背景，`store` 是用户提供的门店位置与地标。四者互相独立，不会互相覆盖。策略生成收到旧 `scene` 字段及独立 `scenario_inputs`；handoff 的 task 快照也保留两者。
+
+需求结果在 `understand` 的 `data.understanding.question_cards` 中，在 `continue` 的 `data.interpretation.question_cards` 中，任务快照同时包含当前有效的 `task.question_cards`。`questions` 仍是兼容的 `string[]`；如有卡片，其问题文本与唯一追问相同。每轮最多一张卡片。卡片仅用于 time/store/usage 结构化场景；当核心字段仍缺失时服务端优先追问一个核心字段，卡片为可选引导，不强迫补齐所有场景。
+
+卡片结构如下，ID 均由服务端为当前任务实例生成：
+
+```json
+{
+  "question_id": "question-<server-generated-id>",
+  "issued_revision": 4,
+  "field": "scenario_inputs.usage.text",
+  "prompt": "选择或描述主要使用场景",
+  "mode": "single",
+  "options": [{"option_id": "option-<server-generated-id>", "label": "课程资料整理"}],
+  "allow_free_text": true
+}
+```
+
+`field` 使用完整路径；单选恰好选择一个选项，多选可选择一个或多个。`card_answers` 每次最多回答一张卡片，答案只能携带服务端返回的 `question_id` 和 `option_ids`；标签从服务端保存的卡片定义解析，客户端不能自报标签或字段映射：
+
+```json
+{
+  "task_id": "<actual-task-id>",
+  "expected_revision": 4,
+  "user_input": "还会用于课堂笔记整理。",
+  "card_answers": [{"question_id": "<actual-question-id>", "option_ids": ["<actual-option-id>"]}]
+}
+```
+
+请求必须使用服务端最近返回的 task revision；发卡时 `issued_revision` 等于响应中最终保存的 task revision。答案仅能用于该任务当前仍有效的卡片。未知、重复或不符合单/多选规则的选项返回 `success=false`、`INVALID_CARD_ANSWER`；任务/题目/版本不匹配或卡片已过期返回 HTTP 409 `QUESTION_CARD_STALE`，调用方应读取最新任务并重新展示当前卡片，不要重放旧答案。`expected_revision` 不匹配返回 HTTP 409 `VERSION_CONFLICT`。
+
+可用的清空路径是 `scenario_inputs.time`/`.time.text`、`scenario_inputs.store`、`scenario_inputs.store.location_text`、`scenario_inputs.store.nearby_landmarks`、`scenario_inputs.usage`/`.usage.text`。清空父级 `store` 会同时清空位置与地标；清空某个子项只清该项，并将状态标为 `cleared`。未提交字段保留。一次更新的 `scenario_inputs` 数组值是替换而非追加。相同场景字段不得同时出现在 `card_answers` 与结构化 `scenario_inputs` 更新/清空中，此时返回 HTTP 409 `INPUT_CONFLICT`，请求整体不保存；选择一种明确输入后重试。
+
+同轮卡片选择加自由文本允许用于补充内容。若自由文本明确改口，需求模型必须给出被本轮原文支持的该字段新值，服务端以这个有效更新覆盖卡片值；未被当前文本支持的模型建议会被丢弃。若改口意图不清楚，模型应追问而不是猜测。前端若要避免模型抽取歧义，可在下一轮只发送明确的 `scenario_inputs` 或清空路径。核心字段的自由文本修改仍通过 `updates` 或被本轮文本支持的需求理解结果更新。
+
+任何一次成功 `continue` 都递增任务版本并清除当前有效卡片；所有需求轮次也会使现有策略/确认失效，但不会仅因场景变化删除仍适用的产品事实。产品变更沿用现有规则使事实记录失效。卡片和场景示例见 [examples/README.md](examples/README.md)，前端交接见 [card-guidance-frontend-handoff.md](card-guidance-frontend-handoff.md)。
+
 ### `POST /api/agent/research`
 
 产品检索是独立的显式操作；`understand` 和 `continue` 不会隐式启动检索。仅当当前任务的产品已确认且必要需求完整时才能检索。请求只接受 `task_id` 与 `expected_revision`：

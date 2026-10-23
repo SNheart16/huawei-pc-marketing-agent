@@ -58,6 +58,9 @@ def _generation_payload(task: dict, eligible_facts: list, research_context: dict
         "task": {key: task[key] for key in (
             "product_query", "audience", "platform", "goal", "scene", "constraints", "excluded_scenes",
         )},
+        # Structured time, store and usage are user/opportunity context only;
+        # contract validation keeps them explicitly unverified.
+        "scenario_inputs": copy.deepcopy(task.get("scenario_inputs", {})),
         "source_limits": {
             "knowledge_source": {key: source[key] for key in ("mode", "name", "live", "status") if key in source},
             "warnings": list(dict.fromkeys(
@@ -259,6 +262,7 @@ def _audit_coverage(client: Any, task: dict, draft: dict, claim_map: list, diagn
     texts = dict(_public_texts(draft))
     review = model_json(client, _AUDIT_PROMPT, {
         "task_context": {key: task[key] for key in ("product_query", "audience", "scene", "platform", "goal")},
+        "scenario_inputs": copy.deepcopy(task.get("scenario_inputs", {})),
         "fields": [{"field_path": path, "text": text} for path, text in texts.items()],
         "declared_fact_claims": claim_map,
     }, diagnostic)

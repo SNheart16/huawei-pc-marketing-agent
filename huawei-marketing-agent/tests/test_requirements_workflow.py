@@ -217,6 +217,188 @@ class RequirementsWorkflowTests(unittest.TestCase):
         with self.assertRaises(RequirementsError):
             _normalize_result({**result(), "task_id": "model-controlled"})
 
+    def issue_card(self, field="scenario_inputs.usage.text", mode="single", options=None):
+        self.model.return_value = result(
+            question="选择或描述主要使用场景。",
+            question_card={
+                "field": field,
+                "mode": mode,
+                "options": options or ["课程资料整理", "文档处理"],
+                "allow_free_text": True,
+            },
+        )
+        status, response = dispatch("/api/agent/understand", full_request())
+        self.assertEqual(status, 201)
+        card = response["data"]["understanding"]["question_cards"][0]
+        return response["data"]["task"], card
+
+    def test_scenario_inputs_are_normalized_as_unverified_user_context(self):
+        status, response = dispatch("/api/agent/understand", full_request(
+            scenario_inputs={
+                "time": {"text": "秋季开学季"},
+                "store": {"location_text": "校园周边门店", "nearby_landmarks": ["用户提供的学校"]},
+                "usage": {"text": "阅读课程资料、整理笔记"},
+            },
+        ))
+        self.assertEqual(status, 201)
+        task = response["data"]["task"]
+        self.assertEqual(task["scenario_inputs"]["time"]["field_status"], "confirmed")
+        self.assertEqual(task["scenario_inputs"]["time"]["source"], "user_input")
+        self.assertEqual(task["scenario_inputs"]["time"]["verification_status"], "unverified")
+        self.assertEqual(task["scenario_inputs"]["store"]["nearby_landmarks"], ["用户提供的学校"])
+        self.assertEqual(task["scene"], "开学季")
+        self.assertNotEqual(task["scene"], task["scenario_inputs"]["usage"]["text"])
+
+    def test_scenario_input_rejects_client_provenance_or_verified_status(self):
+        for value in (
+            {"time": {"text": "某时段", "source": "official"}},
+            {"usage": {"text": "某场景", "verification_status": "verified"}},
+        ):
+            with self.subTest(value=value):
+                status, response = dispatch("/api/agent/understand", full_request(scenario_inputs=value))
+                self.assertEqual(status, 400)
+                self.assertEqual(response["error"]["code"], "INVALID_REQUEST")
+
+    def test_question_card_is_server_issued_and_bound_to_saved_revision(self):
+        task, card = self.issue_card()
+        self.assertEqual(card["issued_revision"], task["revision"])
+        self.assertTrue(card["question_id"].startswith("question-"))
+        self.assertTrue(all(option["option_id"].startswith("option-") for option in card["options"]))
+        self.assertEqual(card["field"], "scenario_inputs.usage.text")
+        self.assertEqual(card["mode"], "single")
+
+    def test_filled_scenario_card_is_suppressed_without_repeating_question(self):
+        self.model.return_value = result(
+            question="你希望顾客实际如何使用电脑？",
+            question_card={
+                "field": "scenario_inputs.usage.text",
+                "mode": "single",
+                "options": ["课程资料整理"],
+                "allow_free_text": True,
+            },
+        )
+        _, response = dispatch("/api/agent/understand", full_request(
+            scenario_inputs={"usage": {"text": "阅读课程资料"}},
+        ))
+        self.assertEqual(response["data"]["understanding"]["questions"], [])
+        self.assertEqual(response["data"]["understanding"]["question_cards"], [])
+
+    def test_single_card_answer_uses_server_option_label_and_accepts_free_text_override(self):
+        task, card = self.issue_card()
+        selected = card["options"][0]
+        self.model.return_value = result(scenario_updates={"usage": {"text": "复习课程资料"}})
+        status, response = dispatch("/api/agent/continue", {
+            "task_id": task["task_id"], "expected_revision": task["revision"],
+            "user_input": "使用场景改为复习课程资料。",
+            "card_answers": [{"question_id": card["question_id"], "option_ids": [selected["option_id"]]}],
+        })
+        self.assertEqual(status, 200)
+        updated = response["data"]["task"]
+        self.assertEqual(updated["scenario_inputs"]["usage"]["text"], "复习课程资料")
+        self.assertEqual(updated["scenario_inputs"]["usage"]["source"], "user_input")
+        self.assertEqual(updated["scenario_inputs"]["usage"]["verification_status"], "unverified")
+        self.assertEqual(response["data"]["interpretation"]["question_cards"], [])
+
+    def test_multiple_card_answer_replaces_landmark_array_and_discards_client_labels(self):
+        task, card = self.issue_card(
+            field="scenario_inputs.store.nearby_landmarks", mode="multiple",
+            options=["校门", "图书馆", "用户自定义选项"],
+        )
+        options = card["options"]
+        self.model.return_value = result()
+        status, response = dispatch("/api/agent/continue", {
+            "task_id": task["task_id"], "expected_revision": task["revision"],
+            "user_input": "附近地标按卡片选择。",
+            "card_answers": [{
+                "question_id": card["question_id"],
+                "option_ids": [options[0]["option_id"], options[1]["option_id"]],
+            }],
+        })
+        self.assertEqual(status, 200)
+        updated = response["data"]["task"]
+        self.assertEqual(updated["scenario_inputs"]["store"]["nearby_landmarks"], ["校门", "图书馆"])
+        self.assertEqual(updated["scenario_inputs"]["store"]["nearby_landmarks_status"], "confirmed")
+
+    def test_invalid_card_answers_are_atomic(self):
+        task, card = self.issue_card()
+        invalid_answers = (
+            [{"question_id": card["question_id"], "option_ids": ["forged-option"]}],
+            [{"question_id": card["question_id"], "option_ids": [card["options"][0]["option_id"]] * 2}],
+            [{"question_id": card["question_id"], "option_ids": [item["option_id"] for item in card["options"]]}],
+            [{"question_id": card["question_id"], "option_ids": [card["options"][0]["option_id"]], "labels": ["伪造标签"]}],
+        )
+        for answer in invalid_answers:
+            with self.subTest(answer=answer):
+                status, response = dispatch("/api/agent/continue", {
+                    "task_id": task["task_id"], "expected_revision": task["revision"],
+                    "user_input": "这轮不会被保存。", "card_answers": answer,
+                })
+                self.assertEqual(status, 400)
+                self.assertEqual(response["error"]["code"], "INVALID_CARD_ANSWER")
+                current = self.repo.get(task["task_id"])
+                self.assertEqual(current["revision"], task["revision"])
+                self.assertEqual(current["conversation"], task["conversation"])
+
+    def test_card_answer_rejects_stale_or_cross_task_question(self):
+        task, card = self.issue_card()
+        answer = {"question_id": card["question_id"], "option_ids": [card["options"][0]["option_id"]]}
+        other = self.repo.create(full_request())
+        status, response = dispatch("/api/agent/continue", {
+            "task_id": other["task_id"], "expected_revision": other["revision"],
+            "user_input": "尝试跨任务提交卡片。", "card_answers": [answer],
+        })
+        self.assertEqual(status, 409)
+        self.assertEqual(response["error"]["code"], "QUESTION_CARD_STALE")
+        self.assertEqual(self.repo.get(other["task_id"])["revision"], other["revision"])
+
+        self.model.return_value = result()
+        _, changed = dispatch("/api/agent/continue", {
+            "task_id": task["task_id"], "expected_revision": task["revision"],
+            "user_input": "改为普通文字回复", "updates": {"audience": "研究生"},
+        })
+        latest = changed["data"]["task"]
+        status, response = dispatch("/api/agent/continue", {
+            "task_id": task["task_id"], "expected_revision": latest["revision"],
+            "user_input": "重放旧卡片。", "card_answers": [answer],
+        })
+        self.assertEqual(status, 409)
+        self.assertEqual(response["error"]["code"], "QUESTION_CARD_STALE")
+
+    def test_card_answer_and_explicit_same_field_update_requires_resolution(self):
+        task, card = self.issue_card()
+        status, response = dispatch("/api/agent/continue", {
+            "task_id": task["task_id"], "expected_revision": task["revision"],
+            "user_input": "同时提交两种不同场景值。",
+            "scenario_inputs": {"usage": {"text": "处理实验数据"}},
+            "card_answers": [{"question_id": card["question_id"], "option_ids": [card["options"][0]["option_id"]]}],
+        })
+        self.assertEqual(status, 409)
+        self.assertEqual(response["error"]["code"], "INPUT_CONFLICT")
+        self.assertEqual(self.repo.get(task["task_id"])["revision"], task["revision"])
+
+    def test_explicit_scenario_clear_cannot_be_restored_by_model(self):
+        task, _ = self.issue_card()
+        self.model.return_value = result(scenario_updates={"usage": {"text": "历史场景"}})
+        status, response = dispatch("/api/agent/continue", {
+            "task_id": task["task_id"], "expected_revision": task["revision"],
+            "user_input": "不再指定使用场景。", "clear_fields": ["scenario_inputs.usage.text"],
+        })
+        self.assertEqual(status, 200)
+        usage = response["data"]["task"]["scenario_inputs"]["usage"]
+        self.assertEqual(usage["text"], "")
+        self.assertEqual(usage["field_status"], "cleared")
+
+    def test_opportunity_scenario_provenance_is_preserved(self):
+        self.model.return_value = result(scenario_updates={"time": {"text": "秋季开学季"}})
+        _, response = dispatch("/api/agent/understand", {
+            "source": "opportunity", "user_input": "按机会内容准备推广。",
+            "opportunity_context": {"scenario_inputs": {"time": {"text": "秋季开学季"}}},
+        })
+        time_input = response["data"]["task"]["scenario_inputs"]["time"]
+        self.assertEqual(time_input["text"], "秋季开学季")
+        self.assertEqual(time_input["source"], "opportunity")
+        self.assertEqual(time_input["verification_status"], "unverified")
+
 
 if __name__ == "__main__":
     unittest.main()

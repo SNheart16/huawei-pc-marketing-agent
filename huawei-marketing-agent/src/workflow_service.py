@@ -24,8 +24,10 @@ from .strategy_service import (StrategyService, StrategyServiceError, validate_c
 from .final_content_contracts import validate_final_content, content_digest, content_texts
 from .final_check_service import FinalCheckService, FinalCheckError
 from .v2_contracts import (
+    CARD_FIELDS,
     FIELD_NAMES,
     MAX_TEXT_LENGTH,
+    SCENARIO_CLEAR_FIELDS,
     ContractValidationError,
     Strategy,
     TaskContext,
@@ -49,6 +51,13 @@ V2_ROUTES = {
 }
 CORE_FIELDS = ("product_query", "audience", "platform", "goal", "scene")
 UPDATE_FIELDS = set(FIELD_NAMES)
+SCENARIO_FIELDS = {"time", "store", "usage"}
+SCENARIO_FIELD_PATHS = {
+    "time": {"text": "scenario_inputs.time.text"},
+    "store": {"location_text": "scenario_inputs.store.location_text",
+              "nearby_landmarks": "scenario_inputs.store.nearby_landmarks"},
+    "usage": {"text": "scenario_inputs.usage.text"},
+}
 
 
 def _missing_requirements(task: TaskContext) -> List[str]:
@@ -101,6 +110,130 @@ def _list_of_text(value: Any, name: str) -> List[str]:
     if not isinstance(value, list) or any(not isinstance(item, str) or len(item) > MAX_TEXT_LENGTH for item in value):
         raise WorkflowError("INVALID_REQUEST", f"{name} 必须是文本数组。")
     return list(value)
+
+
+def _normalize_scenario_updates(value: Any, *, allow_empty: bool = False) -> Dict[str, Dict[str, Any]]:
+    if not isinstance(value, dict) or set(value) - SCENARIO_FIELDS:
+        raise WorkflowError("INVALID_REQUEST", "scenario_inputs 只能包含 time、store 和 usage。")
+    normalized: Dict[str, Dict[str, Any]] = {}
+    allowed = {"time": {"text"}, "store": {"location_text", "nearby_landmarks"}, "usage": {"text"}}
+    for group, fields in value.items():
+        item = value[group]
+        if not isinstance(item, dict) or not item or set(item) - allowed[group]:
+            raise WorkflowError("INVALID_REQUEST", f"scenario_inputs.{group} 结构无效。")
+        normalized[group] = {}
+        for name, raw in item.items():
+            path = f"scenario_inputs.{group}.{name}"
+            if name == "nearby_landmarks":
+                if not isinstance(raw, list) or len(raw) > 20 or any(
+                    not isinstance(entry, str) or len(entry) > 200 or (not allow_empty and not entry.strip())
+                    for entry in raw
+                ):
+                    raise WorkflowError("INVALID_REQUEST", f"{path} 必须是最多 20 项的文本数组。")
+                if not raw and not allow_empty:
+                    raise WorkflowError("INVALID_REQUEST", f"请使用 clear_fields 显式清空 {path}。")
+                normalized[group][name] = list(dict.fromkeys(entry.strip() for entry in raw))
+            else:
+                max_length = 1000 if group == "store" else 2000
+                if not isinstance(raw, str) or len(raw) > max_length or (not allow_empty and not raw.strip()):
+                    raise WorkflowError("INVALID_REQUEST", f"{path} 必须是长度不超过 {max_length} 的文本。")
+                if not raw.strip() and not allow_empty:
+                    raise WorkflowError("INVALID_REQUEST", f"请使用 clear_fields 显式清空 {path}。")
+                normalized[group][name] = raw.strip()
+    return normalized
+
+
+def _scenario_path_set(value: Dict[str, Dict[str, Any]]) -> set:
+    return {SCENARIO_FIELD_PATHS[group][name] for group, item in value.items() for name in item}
+
+
+def _paths_overlap(left: str, right: str) -> bool:
+    return left == right or left.startswith(right + ".") or right.startswith(left + ".")
+
+
+def _has_overlapping_paths(paths: List[str]) -> bool:
+    return any(_paths_overlap(path, other) for index, path in enumerate(paths) for other in paths[index + 1:])
+
+
+def _scenario_value_is_set(task: dict, field: str) -> bool:
+    group, name = field.removeprefix("scenario_inputs.").split(".", 1)
+    item = task["scenario_inputs"][group]
+    status = item["field_status"] if group in {"time", "usage"} else (
+        item["location_status"] if name == "location_text" else item["nearby_landmarks_status"]
+    )
+    return status in {"confirmed", "cleared"}
+
+
+def _apply_scenario_updates(task: dict, updates: Dict[str, Dict[str, Any]], source: str = "user_input") -> None:
+    for group, item in updates.items():
+        target = task["scenario_inputs"][group]
+        for name, value in item.items():
+            if group == "time" or group == "usage":
+                target[name] = value
+                target["field_status"] = "confirmed"
+            else:
+                target[name] = value
+                status_name = "location_status" if name == "location_text" else "nearby_landmarks_status"
+                target[status_name] = "confirmed"
+            target["source"] = source
+            target["verification_status"] = "unverified"
+
+
+def _clear_scenario_fields(task: dict, fields: List[str]) -> None:
+    touched = set()
+    for field in fields:
+        if field in {"scenario_inputs.time", "scenario_inputs.time.text"}:
+            touched.add("time")
+            task["scenario_inputs"]["time"]["text"] = ""
+            task["scenario_inputs"]["time"]["field_status"] = "cleared"
+        elif field == "scenario_inputs.usage" or field == "scenario_inputs.usage.text":
+            touched.add("usage")
+            task["scenario_inputs"]["usage"]["text"] = ""
+            task["scenario_inputs"]["usage"]["field_status"] = "cleared"
+        elif field in {"scenario_inputs.store", "scenario_inputs.store.location_text"}:
+            touched.add("store")
+            task["scenario_inputs"]["store"]["location_text"] = ""
+            task["scenario_inputs"]["store"]["location_status"] = "cleared"
+            if field == "scenario_inputs.store":
+                task["scenario_inputs"]["store"]["nearby_landmarks"] = []
+                task["scenario_inputs"]["store"]["nearby_landmarks_status"] = "cleared"
+        elif field == "scenario_inputs.store.nearby_landmarks":
+            touched.add("store")
+            task["scenario_inputs"]["store"]["nearby_landmarks"] = []
+            task["scenario_inputs"]["store"]["nearby_landmarks_status"] = "cleared"
+    for group in touched:
+        task["scenario_inputs"][group]["source"] = "user_input"
+
+
+def _resolve_card_answers(task: dict, answers: Any) -> Dict[str, Dict[str, Any]]:
+    if not isinstance(answers, list) or len(answers) > 1:
+        raise WorkflowError("INVALID_CARD_ANSWER", "card_answers 每轮最多回答一张服务端问题卡片。")
+    if not answers:
+        return {}
+    card = task["question_cards"][0] if task["question_cards"] else None
+    answer = answers[0]
+    if not isinstance(answer, dict) or set(answer) != {"question_id", "option_ids"}:
+        raise WorkflowError("INVALID_CARD_ANSWER", "卡片答案必须包含 question_id 和 option_ids。")
+    if not isinstance(answer["question_id"], str) or not answer["question_id"]:
+        raise WorkflowError("INVALID_CARD_ANSWER", "question_id 无效。")
+    if card is None or answer["question_id"] != card["question_id"]:
+        raise WorkflowError("QUESTION_CARD_STALE", "问题卡片不存在、已过期或不属于当前任务，请读取最新任务后重试。", http_status=409)
+    if card["issued_revision"] != task["revision"]:
+        raise WorkflowError("QUESTION_CARD_STALE", "问题卡片版本已过期，请读取最新任务后重试。", http_status=409)
+    option_ids = answer["option_ids"]
+    if (not isinstance(option_ids, list) or not option_ids or len(option_ids) > len(card["options"])
+            or any(not isinstance(option_id, str) for option_id in option_ids)
+            or len(option_ids) != len(set(option_ids))):
+        raise WorkflowError("INVALID_CARD_ANSWER", "option_ids 必须是非空且不重复的选项 ID 数组。")
+    known = {option["option_id"]: option["label"] for option in card["options"]}
+    if any(option_id not in known for option_id in option_ids):
+        raise WorkflowError("INVALID_CARD_ANSWER", "答案包含此卡片未提供的选项。")
+    if card["mode"] == "single" and len(option_ids) != 1:
+        raise WorkflowError("INVALID_CARD_ANSWER", "单选卡片必须且只能选择一个选项。")
+    labels = [known[option_id] for option_id in option_ids]
+    group, name = card["field"].removeprefix("scenario_inputs.").split(".", 1)
+    value: Any = labels if name == "nearby_landmarks" else "、".join(labels)
+    return {group: {name: value}}
 
 
 def _copy(value: Any) -> Any:
@@ -161,6 +294,7 @@ class TaskRepository:
                     value = _text(payload.get(field, ""), field)
                     values[field] = value
                     statuses[field] = "confirmed" if value.strip() else "unset"
+            initial_scenario_updates = _normalize_scenario_updates(payload.get("scenario_inputs", {}))
             task: TaskContext = {
                 "task_id": "task-" + uuid.uuid4().hex,
                 "revision": 1,
@@ -168,7 +302,14 @@ class TaskRepository:
                 "user_input": user_input,
                 "conversation": ([{"role": "user", "text": user_input, "at": _now()}] if user_input.strip() else []),
                 **values,
+                "scenario_inputs": {
+                    "time": {"text": "", "field_status": "unset", "source": "user_input", "verification_status": "unverified"},
+                    "store": {"location_text": "", "location_status": "unset", "nearby_landmarks": [],
+                              "nearby_landmarks_status": "unset", "source": "user_input", "verification_status": "unverified"},
+                    "usage": {"text": "", "field_status": "unset", "source": "user_input", "verification_status": "unverified"},
+                },
                 "field_status": statuses,
+                "question_cards": [],
                 "excluded_scenes": _list_of_text(payload.get("excluded_scenes", []), "excluded_scenes"),
                 "opportunity_context": _copy(opportunity),
                 "fact_records": [],
@@ -177,6 +318,7 @@ class TaskRepository:
                 # Field completeness is not proof that understanding or retrieval ran.
                 "workflow_status": "collecting_requirements",
             }
+            _apply_scenario_updates(task, initial_scenario_updates)
             validate_task_context(task)
             self._tasks[task["task_id"]] = task
             self._strategies[task["task_id"]] = {}
@@ -215,6 +357,10 @@ class TaskRepository:
         excluded_scenes: List[str],
         summary: str,
         question: Optional[str],
+        scenario_updates: Optional[Dict[str, Dict[str, Any]]] = None,
+        scenario_clears: Optional[List[str]] = None,
+        question_card: Optional[dict] = None,
+        scenario_sources: Optional[Dict[str, str]] = None,
     ) -> Tuple[TaskContext, Dict[str, Any]]:
         """Commit validated model suggestions only if its input snapshot is current."""
         if not isinstance(updates, dict) or set(updates) - UPDATE_FIELDS:
@@ -225,6 +371,15 @@ class TaskRepository:
         if question is not None:
             _text(question, "question", allow_empty=False)
         _list_of_text(excluded_scenes, "excluded_scenes")
+        scenario_updates = _normalize_scenario_updates(scenario_updates or {})
+        scenario_clears = list(scenario_clears or [])
+        scenario_update_paths = list(_scenario_path_set(scenario_updates))
+        if (len(scenario_clears) != len(set(scenario_clears))
+                or set(scenario_clears) - set(SCENARIO_CLEAR_FIELDS)
+                or _has_overlapping_paths(list(scenario_clears))
+                or any(_paths_overlap(updated, cleared)
+                       for updated in scenario_update_paths for cleared in scenario_clears)):
+            raise WorkflowError("INVALID_MODEL_RESPONSE", "模型场景更新或清空字段无效。", http_status=502)
 
         with self._lock:
             task = self._checked_task(task_id, expected_revision)
@@ -239,7 +394,16 @@ class TaskRepository:
             for field in clear_fields:
                 next_task[field] = [] if field == "constraints" else ""
                 next_task["field_status"][field] = "cleared"
-            changed = any(next_task[field] != task[field] for field in FIELD_NAMES)
+            scenario_sources = scenario_sources or {}
+            if set(scenario_sources) - set(scenario_updates) or any(
+                source not in {"user_input", "opportunity"} for source in scenario_sources.values()
+            ):
+                raise WorkflowError("INVALID_MODEL_RESPONSE", "场景来源标记无效。", http_status=502)
+            for group, values in scenario_updates.items():
+                _apply_scenario_updates(next_task, {group: values}, scenario_sources.get(group, "user_input"))
+            _clear_scenario_fields(next_task, scenario_clears)
+            changed = (any(next_task[field] != task[field] for field in FIELD_NAMES)
+                       or next_task["scenario_inputs"] != task["scenario_inputs"])
             product_changed = next_task["product_query"] != task["product_query"]
             if changed or excluded_scenes or next_task["current_strategy_id"]:
                 self._supersede_current_strategy(task_id, next_task)
@@ -253,6 +417,25 @@ class TaskRepository:
             # Model questions are advisory. Select one missing field on the
             # server, so a model cannot ask several questions or re-ask a known field.
             questions = _question(next_task)
+            issued_cards: List[dict] = []
+            if not questions and question and isinstance(question_card, dict):
+                field = question_card.get("field")
+                if field in CARD_FIELDS and not _scenario_value_is_set(next_task, field):
+                    issued = {
+                        "question_id": "question-" + uuid.uuid4().hex,
+                        "issued_revision": next_task["revision"] + 1,
+                        "field": field,
+                        "prompt": question,
+                        "mode": question_card["mode"],
+                        "options": [{"option_id": "option-" + uuid.uuid4().hex, "label": label}
+                                    for label in question_card["options"]],
+                        "allow_free_text": question_card["allow_free_text"],
+                    }
+                    issued_cards = [issued]
+                    questions = [question]
+            elif not questions and question:
+                questions = [question]
+            next_task["question_cards"] = issued_cards
             assistant_turn = summary + (("\n" + questions[0]) if questions else "")
             next_task["conversation"].append({"role": "assistant", "text": assistant_turn, "at": _now()})
             next_task["revision"] += 1
@@ -261,6 +444,7 @@ class TaskRepository:
             data = {
                 "summary": summary,
                 "questions": questions,
+                "question_cards": _copy(issued_cards),
                 "missing_information": missing,
                 "next_action": "collecting_requirements" if missing else "research_product",
                 "understanding_status": "needs_input" if missing else "complete",
@@ -281,11 +465,13 @@ class TaskRepository:
                     http_status=409,
                 )
             next_task = _copy(task)
-            allowed = {"task_id", "expected_revision", "user_input", "updates", "clear_fields", "excluded_scenes"}
+            allowed = {"task_id", "expected_revision", "user_input", "updates", "clear_fields", "excluded_scenes",
+                       "scenario_inputs", "card_answers"}
             if set(payload) - allowed:
                 raise WorkflowError("INVALID_REQUEST", "continue 请求包含不支持的字段。")
             turn_text = _text(payload.get("user_input", ""), "user_input")
-            if not turn_text.strip() and not payload.get("updates") and not payload.get("clear_fields"):
+            if (not turn_text.strip() and not payload.get("updates") and not payload.get("clear_fields")
+                    and not payload.get("scenario_inputs") and not payload.get("card_answers")):
                 raise WorkflowError("INVALID_REQUEST", "continue 至少需要 user_input、updates 或 clear_fields。")
             if turn_text.strip():
                 next_task["conversation"].append({"role": "user", "text": turn_text, "at": _now()})
@@ -297,11 +483,24 @@ class TaskRepository:
                 raise WorkflowError("INVALID_REQUEST", "updates 包含不支持的字段。", data={"fields": sorted(unknown)})
             clears = payload.get("clear_fields", [])
             clears = _list_of_text(clears, "clear_fields")
-            unknown_clears = set(clears) - UPDATE_FIELDS
+            unknown_clears = set(clears) - UPDATE_FIELDS - set(SCENARIO_CLEAR_FIELDS)
             if unknown_clears:
                 raise WorkflowError("INVALID_REQUEST", "clear_fields 包含不支持的字段。", data={"fields": sorted(unknown_clears)})
             if set(updates) & set(clears):
                 raise WorkflowError("INVALID_REQUEST", "同一字段不能同时更新和清空。")
+            scenario_updates = _normalize_scenario_updates(payload.get("scenario_inputs", {}))
+            scenario_clears = set(clears) & set(SCENARIO_CLEAR_FIELDS)
+            if _has_overlapping_paths(list(scenario_clears)):
+                raise WorkflowError("INVALID_REQUEST", "scenario_inputs.store 清空不能与其子字段重复。")
+            if any(_paths_overlap(updated, cleared)
+                   for updated in _scenario_path_set(scenario_updates) for cleared in scenario_clears):
+                raise WorkflowError("INVALID_REQUEST", "同一场景字段不能同时更新和清空。")
+            resolved_cards = _resolve_card_answers(task, payload.get("card_answers", []))
+            card_paths = _scenario_path_set(resolved_cards)
+            if (any(_paths_overlap(card_path, path)
+                    for card_path in card_paths
+                    for path in list(_scenario_path_set(scenario_updates)) + list(scenario_clears))):
+                raise WorkflowError("INPUT_CONFLICT", "同一场景字段不能同时提交卡片答案和结构化修改或清空。请保留一种明确输入。", http_status=409)
             for field, value in updates.items():
                 if field == "constraints":
                     value = _list_of_text(value, field)
@@ -312,8 +511,13 @@ class TaskRepository:
                 next_task[field] = value
                 next_task["field_status"][field] = "confirmed"
             for field in clears:
+                if field in SCENARIO_CLEAR_FIELDS:
+                    continue
                 next_task[field] = [] if field == "constraints" else ""
                 next_task["field_status"][field] = "cleared"
+            _apply_scenario_updates(next_task, scenario_updates)
+            _apply_scenario_updates(next_task, resolved_cards)
+            _clear_scenario_fields(next_task, list(scenario_clears))
             if "excluded_scenes" in payload:
                 next_task["excluded_scenes"] = _list_of_text(payload["excluded_scenes"], "excluded_scenes")
             if next_task["product_query"] != task["product_query"]:
@@ -322,6 +526,7 @@ class TaskRepository:
             self._supersede_current_strategy(task_id, next_task)
             next_task["current_strategy_id"] = None
             next_task["current_strategy_version"] = None
+            next_task["question_cards"] = []
             next_task["revision"] += 1
             next_task["workflow_status"] = "collecting_requirements"
             validate_task_context(next_task)
@@ -921,9 +1126,21 @@ def _model_failure(task: TaskContext, error: RequirementsError) -> Tuple[int, Di
     }
 
 
-def _apply_understanding(task: TaskContext, turn: str, explicit_updates: Dict[str, Any], explicit_clears: List[str]) -> Tuple[TaskContext, Dict[str, Any]]:
+def _apply_understanding(
+    task: TaskContext,
+    turn: str,
+    explicit_updates: Dict[str, Any],
+    explicit_clears: List[str],
+    explicit_scenario_updates: Optional[Dict[str, Dict[str, Any]]] = None,
+    explicit_scenario_clears: Optional[List[str]] = None,
+    resolved_card_answers: Optional[Dict[str, Dict[str, Any]]] = None,
+) -> Tuple[TaskContext, Dict[str, Any]]:
+    explicit_scenario_updates = explicit_scenario_updates or {}
+    explicit_scenario_clears = explicit_scenario_clears or []
+    resolved_card_answers = resolved_card_answers or {}
     try:
-        result = interpret_requirements(task, turn, explicit_updates, explicit_clears)
+        result = interpret_requirements(task, turn, explicit_updates, explicit_clears,
+                                        explicit_scenario_updates, resolved_card_answers)
     except RequirementsError:
         raise
     except Exception:
@@ -961,9 +1178,43 @@ def _apply_understanding(task: TaskContext, turn: str, explicit_updates: Dict[st
         updates = {field: value for field, value in updates.items() if field not in clears}
     excluded = [item for item in result["excluded_scenes"] if grounded(item)]
 
+    direct_scenario_paths = _scenario_path_set(explicit_scenario_updates) | set(explicit_scenario_clears)
+    card_paths = _scenario_path_set(resolved_card_answers)
+    scenario_updates: Dict[str, Dict[str, Any]] = {}
+    scenario_sources: Dict[str, str] = {}
+    for group, fields in result.get("scenario_updates", {}).items():
+        for name, value in fields.items():
+            path = SCENARIO_FIELD_PATHS[group][name]
+            if path in direct_scenario_paths or path in explicit_scenario_clears:
+                continue
+            source_values = value if isinstance(value, list) else [value]
+            card_value = resolved_card_answers.get(group, {}).get(name)
+            if card_value is not None and value == card_value:
+                scenario_updates.setdefault(group, {})[name] = value
+                scenario_sources[group] = "user_input"
+            elif all(grounded(item) for item in source_values):
+                # Explicit free text can revise a same-turn card selection.
+                scenario_updates.setdefault(group, {})[name] = value
+                scenario_sources[group] = "user_input"
+            elif task["source"] == "opportunity" and task["opportunity_context"]:
+                opportunity_scenario = task["opportunity_context"].get("scenario_inputs", {})
+                opportunity_value = (opportunity_scenario.get(group, {}).get(name)
+                                     if isinstance(opportunity_scenario, dict) else None)
+                if value == opportunity_value and not _scenario_value_is_set(task, path):
+                    scenario_updates.setdefault(group, {})[name] = value
+                    scenario_sources[group] = "opportunity"
+
+    question_card = result.get("question_card")
+    if question_card and (question_card["field"] in direct_scenario_paths
+                          or question_card["field"] in card_paths
+                          or _scenario_value_is_set(task, question_card["field"])):
+        question_card = None
+        result["question"] = None
+
     return REPOSITORY.apply_interpretation(
         task["task_id"], task["revision"], updates, clears, excluded,
-        result["summary"], result["question"],
+        result["summary"], result["question"], scenario_updates,
+        explicit_scenario_clears, question_card, scenario_sources,
     )
 
 
@@ -972,16 +1223,17 @@ def dispatch(path: str, payload: Any) -> Tuple[int, Dict[str, Any]]:
     try:
         body = _object(payload, "请求体")
         if path == "/api/agent/understand":
-            allowed = set(FIELD_NAMES) | {"source", "user_input", "opportunity_context", "excluded_scenes"}
+            allowed = set(FIELD_NAMES) | {"source", "user_input", "opportunity_context", "excluded_scenes", "scenario_inputs"}
             if set(body) - allowed:
                 raise WorkflowError("INVALID_REQUEST", "understand 请求包含服务端管理字段或未知字段。")
+            scenario_updates = _normalize_scenario_updates(body.get("scenario_inputs", {}))
             task = REPOSITORY.create(body)
             explicit_updates = {
                 field: task[field] for field in FIELD_NAMES
                 if (field == "constraints" and task[field]) or (field != "constraints" and task[field].strip())
             }
             try:
-                task, understood = _apply_understanding(task, task["user_input"], explicit_updates, [])
+                task, understood = _apply_understanding(task, task["user_input"], explicit_updates, [], scenario_updates)
             except RequirementsError as error:
                 return _model_failure(REPOSITORY.get(task["task_id"]), error)
             return 201, _envelope({
@@ -990,18 +1242,32 @@ def dispatch(path: str, payload: Any) -> Tuple[int, Dict[str, Any]]:
                     "implementation_status": "IMPLEMENTED",
                     "summary": understood["summary"],
                     "questions": understood["questions"],
+                    "question_cards": understood["question_cards"],
                 },
                 "missing_information": understood["missing_information"],
                 "next_action": understood["next_action"],
             })
         if path == "/api/agent/continue":
             task_id = _text(body.get("task_id", ""), "task_id", allow_empty=False)
+            current = REPOSITORY.get(task_id)
+            expected = body.get("expected_revision")
+            if isinstance(expected, bool) or not isinstance(expected, int) or expected < 1:
+                raise WorkflowError("INVALID_REQUEST", "expected_revision 必须是正整数。")
+            if expected != current["revision"]:
+                REPOSITORY._checked_task(task_id, expected)
+            _list_of_text(body.get("clear_fields", []), "clear_fields")
+            resolved_cards = _resolve_card_answers(current, body.get("card_answers", []))
+            explicit_scenario_updates = _normalize_scenario_updates(body.get("scenario_inputs", {}))
+            explicit_scenario_clears = set(body.get("clear_fields", [])) & set(SCENARIO_CLEAR_FIELDS)
             task = REPOSITORY.update(task_id, body.get("expected_revision"), body)
             explicit_updates = body.get("updates", {})
             explicit_clears = body.get("clear_fields", [])
             turn = body.get("user_input", "")
             try:
-                task, understood = _apply_understanding(task, turn, explicit_updates, explicit_clears)
+                task, understood = _apply_understanding(
+                    task, turn, explicit_updates, explicit_clears,
+                    explicit_scenario_updates, list(explicit_scenario_clears), resolved_cards,
+                )
             except RequirementsError as error:
                 return _model_failure(REPOSITORY.get(task_id), error)
             return 200, _envelope({
@@ -1010,6 +1276,7 @@ def dispatch(path: str, payload: Any) -> Tuple[int, Dict[str, Any]]:
                     "implementation_status": "IMPLEMENTED",
                     "summary": understood["summary"],
                     "questions": understood["questions"],
+                    "question_cards": understood["question_cards"],
                 },
                 "missing_information": understood["missing_information"],
                 "next_action": understood["next_action"],
