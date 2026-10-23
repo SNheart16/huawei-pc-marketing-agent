@@ -1,0 +1,171 @@
+{
+  "success": true,
+  "data": {
+    "task": {
+      "task_id": "task-synthetic-001",
+      "revision": 9,
+      "source": "direct",
+      "user_input": "仅用于策略接口契约测试",
+      "conversation": [],
+      "product_query": "SYNTHETIC_TEST_MODEL",
+      "audience": "大学新生",
+      "platform": "小红书",
+      "goal": "介绍有来源支持的信息",
+      "scene": "开学季",
+      "constraints": [
+        "不写价格或优惠"
+      ],
+      "field_status": {
+        "product_query": "confirmed",
+        "audience": "confirmed",
+        "platform": "confirmed",
+        "goal": "confirmed",
+        "scene": "confirmed",
+        "constraints": "confirmed"
+      },
+      "excluded_scenes": [],
+      "opportunity_context": null,
+      "fact_records": [
+        {
+          "fact_id": "fact-synthetic-001",
+          "product_model": "SYNTHETIC_TEST_MODEL",
+          "claim": "合成测试属性：示例值。",
+          "evidence_text": "合成测试属性：示例值。",
+          "source_ref": "fixtures/synthetic-fact.md",
+          "source_type": "other",
+          "retrieved_at": "2026-10-22T00:00:00Z",
+          "valid_until": null,
+          "status": "supported"
+        }
+      ],
+      "current_strategy_id": "strategy-synthetic-001",
+      "current_strategy_version": 1,
+      "workflow_status": "strategy_confirmed"
+    },
+    "final_check": {
+      "content_digest": "fb987c8ab5370921acc819329f7c7a901197f4d6c3c85baa91ac6596f4503c02",
+      "execution_status": "completed",
+      "text_check": {
+        "status": "passed",
+        "results": [
+          {
+            "field_path": "body",
+            "check": {
+              "task_id": "task-synthetic-001",
+              "task_revision": 8,
+              "fact_references": [
+                "fact-synthetic-001"
+              ],
+              "evidence": [
+                "合成测试属性：示例值。"
+              ],
+              "source_refs": [
+                "fixtures/synthetic-fact.md"
+              ],
+              "status": "supported",
+              "reason": "合成契约示例：当前陈述得到本次可用来源支持；不表示最新或官方认证。",
+              "suggested_action": "none",
+              "claim": "合成测试属性：示例值。"
+            }
+          },
+          {
+            "field_path": "plain_text",
+            "check": {
+              "task_id": "task-synthetic-001",
+              "task_revision": 8,
+              "fact_references": [
+                "fact-synthetic-001"
+              ],
+              "evidence": [
+                "合成测试属性：示例值。"
+              ],
+              "source_refs": [
+                "fixtures/synthetic-fact.md"
+              ],
+              "status": "supported",
+              "reason": "合成契约示例：当前陈述得到本次可用来源支持；不表示最新或官方认证。",
+              "suggested_action": "none",
+              "claim": "合成测试属性：示例值。"
+            }
+          },
+          {
+            "field_path": "title",
+            "check": {
+              "task_id": "task-synthetic-001",
+              "task_revision": 8,
+              "claim": "合成契约核查示例",
+              "status": "not_applicable",
+              "fact_references": [],
+              "evidence": [],
+              "source_refs": [],
+              "reason": "该文字属于表达建议或说明，不授予产品事实资格。",
+              "suggested_action": "none"
+            }
+          }
+        ],
+        "blocking_items": [],
+        "counts": {
+          "supported": 2,
+          "unsupported": 0,
+          "conflicting": 0,
+          "needs_confirmation": 0,
+          "not_applicable": 1
+        }
+      },
+      "image_check": {
+        "status": "unknown",
+        "visual_check_performed": false,
+        "submitted_count": 0,
+        "confirmed_count": 0,
+        "unknown_count": 0,
+        "items": [],
+        "missing_information": [
+          "没有视觉识别或图片核验能力；图片外观、内嵌文字、型号对应与授权均未核验。",
+          "未提交图片；空列表不代表图片核验通过。"
+        ]
+      },
+      "overall": {
+        "status": "partial",
+        "completed": false,
+        "text_usable": true,
+        "ready_to_publish": false
+      },
+      "usable_text": {
+        "title": "合成契约核查示例",
+        "body": "合成测试属性：示例值。",
+        "cta": "",
+        "plain_text": "合成测试属性：示例值。"
+      },
+      "knowledge_source": {
+        "mode": "local",
+        "name": "synthetic-source",
+        "live": false,
+        "status": "ok",
+        "message": "合成来源示例"
+      },
+      "warnings": [
+        "合成契约示例，不是实际产品核查结果。",
+        "文字通过不代表整套图文通过；图片视觉内容及内嵌文字仍为 unknown。",
+        "本次采用本地副本 live=false，未进行实时在线核验。",
+        "部分来源类别为 other，可靠性有限，不能宣称官方认证。",
+        "资料未注明有效期，当前有效性未知；检索时间不是发布时间。"
+      ],
+      "errors": [],
+      "diagnostics": {},
+      "next_action": "verify_images",
+      "check_id": "final-check-synthetic-001",
+      "task_id": "task-synthetic-001",
+      "task_revision": 8,
+      "saved_task_revision": 9,
+      "strategy_id": "strategy-synthetic-001",
+      "strategy_version": 1,
+      "content_version": 1,
+      "evidence_revision": 3,
+      "checked_at": "2026-10-22T00:00:00Z",
+      "valid": true
+    },
+    "implementation_status": "IMPLEMENTED",
+    "next_action": "verify_images"
+  },
+  "error": null
+}

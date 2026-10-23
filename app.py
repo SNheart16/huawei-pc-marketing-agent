@@ -28,9 +28,12 @@ INPUT_KEYS = ("product_query", "audience", "scene", "platform", "goal", "extra_r
 sys.path.insert(0, str(BACKEND_DIR))
 try:
     from src.agent import run_agent
+    from src.workflow_service import V2_ROUTES, dispatch as dispatch_v2
     BACKEND_ERROR = None
 except Exception:
     run_agent = None
+    V2_ROUTES = set()
+    dispatch_v2 = None
     BACKEND_ERROR = "真实后端导入失败，请检查后端文件及运行环境。"
 
 
@@ -66,12 +69,14 @@ class Handler(SimpleHTTPRequestHandler):
         self.send_header("X-Content-Type-Options", "nosniff")
         super().end_headers()
 
-    def _json(self, status: int, data: dict) -> None:
+    def _json(self, status: int, data: dict, v2: bool = False) -> None:
         try:
             body = json.dumps(data, ensure_ascii=False, allow_nan=False).encode("utf-8")
         except (TypeError, ValueError, OverflowError, RecursionError, UnicodeError):
             status = 502
-            body = json.dumps(error_result("BAD_RESULT", "后端返回结果格式不正确。"), ensure_ascii=False).encode("utf-8")
+            fallback = ({"success": False, "data": None, "error": {"code": "BAD_RESULT", "message": "v2 后端返回结果格式不正确。"}}
+                        if v2 else error_result("BAD_RESULT", "后端返回结果格式不正确。"))
+            body = json.dumps(fallback, ensure_ascii=False).encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
@@ -87,32 +92,45 @@ class Handler(SimpleHTTPRequestHandler):
         return super().do_GET()
 
     def do_POST(self):
-        if self.path != "/api/run":
+        path = self.path.split("?", 1)[0]
+        is_v2 = path in V2_ROUTES
+        if path != "/api/run" and not is_v2:
             return self._json(404, error_result("NOT_FOUND", "接口不存在"))
-        if run_agent is None:
+        if path == "/api/run" and run_agent is None:
             return self._json(503, error_result("BACKEND_NOT_READY", "真实后端尚未就绪。", "请检查后端文件和运行环境后重试。"))
+        if is_v2 and dispatch_v2 is None:
+            return self._json(503, {"success": False, "data": None, "error": {"code": "BACKEND_NOT_READY", "message": "v2 工作流后端尚未就绪。"}})
+
+        def request_error(status: int, code: str, message: str):
+            if is_v2:
+                return self._json(status, {"success": False, "data": None, "error": {"code": code, "message": message}})
+            return self._json(status, error_result(code, message))
 
         lengths = self.headers.get_all("Content-Length", [])
         if len(lengths) != 1 or self.headers.get("Transfer-Encoding"):
-            return self._json(400, error_result("BAD_REQUEST", "请求长度格式不正确。"))
+            return request_error(400, "BAD_REQUEST", "请求长度格式不正确。")
         try:
             length = int(lengths[0])
         except (TypeError, ValueError, OverflowError):
-            return self._json(400, error_result("BAD_REQUEST", "请求长度格式不正确。"))
+            return request_error(400, "BAD_REQUEST", "请求长度格式不正确。")
         if length <= 0 or length > MAX_BODY:
-            return self._json(400, error_result("BAD_REQUEST", "请求体为空或过大"))
+            return request_error(400, "BAD_REQUEST", "请求体为空或过大。")
         try:
             self.connection.settimeout(15)
             raw = json.loads(self.rfile.read(length).decode("utf-8"))
             if not isinstance(raw, dict):
                 raise ValueError
         except (ValueError, UnicodeError, OSError, RecursionError):
-            return self._json(400, error_result("BAD_JSON", "请求体必须是有效的 JSON 对象。"))
+            return request_error(400, "BAD_JSON", "请求体必须是有效的 JSON 对象。")
+
+        if is_v2:
+            status, result = dispatch_v2(path, raw)
+            return self._json(status, result, v2=True)
 
         # 只透传约定字段；缺失或 null 交由真实 Agent 返回 needs_input。
         input_data = {k: raw.get(k) if raw.get(k) is not None else "" for k in INPUT_KEYS}
         if any(not isinstance(value, str) or len(value) > 2000 for value in input_data.values()):
-            return self._json(400, error_result("BAD_INPUT", "输入字段必须为不超过 2000 字的文本。"))
+            return request_error(400, "BAD_INPUT", "输入字段必须为不超过 2000 字的文本。")
         try:
             result = run_agent(input_data)
         except Exception:

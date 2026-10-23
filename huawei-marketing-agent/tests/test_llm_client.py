@@ -9,7 +9,7 @@ from urllib.error import HTTPError, URLError
 from urllib.request import Request
 from unittest.mock import patch
 
-from src.llm_client import LLMClient, LLMClientError, _NoRedirect
+from src.llm_client import LLMClient, LLMClientError, _NoRedirect, model_json
 
 
 def chat(content):
@@ -195,6 +195,70 @@ class LLMClientTests(unittest.TestCase):
             client.generate_json("system", [])
         with self.assertRaises(ValueError):
             client.generate_json("system", {"invalid": float("nan")})
+
+    def test_diagnostic_counts_json_retries_and_excludes_payload_and_output(self):
+        trace = {}
+        client = self.make_client(FakeOpener(chat("PRIVATE_RESPONSE"), chat("{}")))
+        self.assertEqual(model_json(client, "PRIVATE_PROMPT", {"text": "PRIVATE_EVIDENCE"}, trace), {})
+        self.assertEqual(trace["model_call_count"], 1)
+        self.assertEqual(trace["upstream_request_count"], 2)
+        self.assertEqual(trace["upstream_requests"][0]["failure_type"], "json_parse")
+        self.assertEqual(trace["upstream_requests"][1]["status"], "ok")
+        self.assertGreaterEqual(trace["elapsed_ms"], 0)
+        self.assertNotIn("PRIVATE", json.dumps(trace))
+
+    def test_transport_json_and_schema_errors_have_distinct_safe_diagnostics(self):
+        cases = [
+            ((URLError(ConnectionRefusedError("PRIVATE_HOST")),), "connection", "ConnectionRefusedError"),
+            ((URLError(socket.timeout("PRIVATE_HOST")),), "timeout", "TimeoutError"),
+            ((chat("PRIVATE_RESPONSE"), chat("PRIVATE_RESPONSE")), "json_parse", "_InvalidJSON"),
+            (({"choices": []},), "response_schema", "LLMClientError"),
+        ]
+        for replies, kind, cause in cases:
+            with self.subTest(kind=kind):
+                trace = {}
+                with self.assertRaises(LLMClientError):
+                    model_json(self.make_client(FakeOpener(*replies)), "PRIVATE_PROMPT", {}, trace)
+                self.assertEqual(trace["failure_type"], kind)
+                self.assertIn(cause, trace["exception_types"])
+                self.assertNotIn("http_status", trace)
+                self.assertNotIn("PRIVATE", json.dumps(trace))
+
+    def test_http_request_id_and_status_are_preserved_without_error_body(self):
+        failure = HTTPError("https://private.invalid", 503, "PRIVATE_MESSAGE",
+                            {"x-request-id": "req-offline-123", "Authorization": "PRIVATE_HEADER"}, io.BytesIO(b"PRIVATE_BODY"))
+        trace = {}
+        with self.assertRaises(LLMClientError):
+            model_json(self.make_client(FakeOpener(failure)), "prompt", {}, trace)
+        self.assertEqual(trace["failure_type"], "upstream_http")
+        self.assertEqual(trace["http_status"], 503)
+        self.assertEqual(trace["upstream_requests"][0]["request_id"], "req-offline-123")
+        self.assertEqual(trace["upstream_request_count"], 1)
+        self.assertNotIn("PRIVATE", json.dumps(trace))
+
+    def test_success_response_request_id_and_time_are_observed(self):
+        class HeaderOpener(FakeOpener):
+            def open(self, *args, **kwargs):
+                response = super().open(*args, **kwargs)
+                response.headers = {"x-request-id": "req-offline-success"}
+                response.status = 200
+                return response
+        trace = {}
+        model_json(self.make_client(HeaderOpener(chat("{}"))), "prompt", {}, trace)
+        request = trace["upstream_requests"][0]
+        self.assertEqual(request["request_id"], "req-offline-success")
+        self.assertEqual(request["http_status"], 200)
+        self.assertGreaterEqual(request["elapsed_ms"], 0)
+
+    def test_untrusted_request_ids_cannot_expose_credentials_or_urls(self):
+        for value in ("offline-placeholder", "Bearer-PRIVATE", "https://example.invalid?key=PRIVATE", "sk-PRIVATE", "id\r\nCookie:PRIVATE"):
+            with self.subTest(value=value):
+                trace = {}
+                failure = HTTPError("https://private.invalid", 401, "PRIVATE", {"x-request-id": value}, io.BytesIO())
+                with self.assertRaises(LLMClientError):
+                    model_json(self.make_client(FakeOpener(failure)), "prompt", {}, trace)
+                self.assertNotIn("request_id", trace["upstream_requests"][0])
+                self.assertNotIn("PRIVATE", json.dumps(trace))
 
 
 if __name__ == "__main__":
