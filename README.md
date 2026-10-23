@@ -1,5 +1,16 @@
 # 华为产品推广工作台
 
+
+## 复赛集成演示
+
+本轮在独立集成分支连接 A 需求理解、卡片与场景、检索核查、策略确认及 B 图文工作台。真实演示入口为 `/demo.html`；使用步骤、配置和边界见 [演示操作手册](docs/demo-runbook.md)，本轮实际验证范围见 [联调报告](docs/demo-integration-report.md)。这些实测结果不与历史验收混淆：接口导入、API 处理成功、文字核查通过与整套图文可发布是不同状态。
+
+本轮暂停地图；图片视觉及内嵌文字核查仍为 `unknown`，不能宣称整套图文已核验或可直接发布。原首页保留最新 main 的前端原型；B 独立历史样例 `?content_demo=study` 使用演示策略，不可代替真实链路。
+
+B 模块说明见 [B 接口交接](docs/TASK_B_HANDOFF.md) 和 [历史 B 验收](docs/TEST_RESULTS.md)。本轮默认采用预生成素材，生图 API 已禁用；历史 `layout`/`ai_reference` 说明不代表当前演示模式。B 历史文档中“A 尚未提供最终核查”的说法来自旧基线，本集成分支通过适配连接 A 已有接口。历史截图与实际响应成果保留在原 B 提交，本轮集成不将其加入 Git，也不把它们当作本轮验收证据。
+
+预生成素材交付入口：[素材放置与清单维护](ui/assets/pregenerated/README.md)、[实际清单](ui/assets/pregenerated/manifest.json) 及 [页面操作](docs/demo-runbook.md)。公众号、朋友圈、小红书分别选择和排序图片，保留各自草稿；当前 X Pro 每栏 3 张可选。型号不明及 MateBook 14 素材不得混入 X Pro。图片保持视觉核查 `unknown`、授权待确认，不因使用固定素材而视为已核验或可直接发布。
+
 ## A 模块接入
 
 A 侧真实需求理解、产品检索、生成前后事实核查、策略生成/确认和图文交接已完成端到端验收。接入请先阅读 [A 模块交付说明](docs/agent-core-a-handoff.md)、[API v2](docs/agent-api-v2.md) 和 [可解析契约示例](docs/examples/README.md)。当前团队仓库为 [huawei-pc-marketing-agent](https://github.com/SNheart16/huawei-pc-marketing-agent)。
@@ -50,7 +61,7 @@ python3 app.py --port 7860
 
 - `/`（原型首页）当前完全前端模拟：状态存浏览器 localStorage，无网络请求；接入真实 Agent 时以 [API v2](docs/agent-api-v2.md) 为准。
 - `/backend.html` 走旧版 `POST /api/run` 六字段契约（`product_query`、`audience`、`scene`、`platform`、`goal`、`extra_requirements`），供联调真实模型与知识库；五态响应（`success`／`partial`／`needs_input`／`conflict`／`error`）的展示与复制权限约定见下文「使用与接口」。
-- 地理信息接口（门店周边商圈，供「推广机会」地理位置入口使用）契约见 [地理接口契约](docs/backend-api-contract-geo.md) 与 [v0.1 JSON](docs/geo-api-contract-v0.1.json)。
+- 地理信息接口的历史提议见 [地理接口契约](docs/backend-api-contract-geo.md) 与 [v0.1 JSON](docs/geo-api-contract-v0.1.json)。本轮暂停地图，演示服务不提供 `/api/geo/*`；手填门店仍属于用户输入。
 - 前端对后端响应的处理约定（五态渲染、复制权限、`content.images` 与证据关联、图片可访问性检查）由 `tests/test_prototype.cjs` 中的 v1.0 契约用例锁定；改动接口行为时请同步更新测试。
 
 ### 前端回归

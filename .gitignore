@@ -21,6 +21,15 @@ venv/
 *.secrets
 secrets.*
 credentials.*
+.content-data/
+test-results/
+# B 历史验收截图留在本机及原 B 分支；本轮不提交真实响应/调试成果。
+docs/evidence/live-poster.png
+docs/evidence/live-workbench.png
+docs/evidence/poster-fixed-workbench.png
+docs/evidence/poster-fixed.png
+docs/evidence/poster-preview.png
+docs/evidence/workbench.png
 *_secrets.*
 *_credentials.*
 

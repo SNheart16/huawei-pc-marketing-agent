@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>华为 PC · 复赛真实流程</title><link rel="icon" href="data:,"><link rel="stylesheet" href="demo-flow.css"></head>
+<body>
+<header><div><span class="eyebrow">HUAWEI PC MARKETING</span><h1>把推广想法变成有依据的图文</h1><p>真实需求理解 → 产品证据 → 策略确认 → 图文工作台 → 最终核查</p></div><a href="/">返回交互原型</a></header>
+<main>
+  <aside>
+    <div class="card"><h2>当前会话</h2><p id="task-meta">尚未创建任务</p><p id="workflow">从左侧需求开始</p><p class="muted">任务仅保存在当前服务内存；服务重启后需要新建。地图已暂停，时间和地点均来自用户填写。</p><button id="refresh" disabled>读取最新任务</button><button id="new-task">新建会话</button></div>
+    <ol class="steps"><li>理解与追问</li><li>检索与事实核查</li><li>策略与人工确认</li><li>真实图文成果与最终核查</li></ol>
+    <p class="muted">接口成功不等于事实通过；文字可用不等于图片已核验。图片始终需要视觉与授权确认。</p>
+  </aside>
+  <div class="workspace">
+    <div id="status" class="notice" role="status" aria-live="polite">尚未调用模型。请描述你的推广想法。</div>
+    <div id="error" class="notice error" role="alert" hidden></div>
+    <section class="card" id="requirements"><div class="section-head"><h2>1 · 理解你的推广需求</h2><span id="requirements-status" class="badge">待输入</span></div>
+      <label for="idea">推广想法 / 本轮补充或修改</label><textarea id="idea" rows="3" placeholder="描述想推广的产品、受众与目的；不确定的部分可以稍后补充。"></textarea>
+      <details id="fields" open><summary>当前有效需求 · 可修改或明确清空</summary><div class="grid">
+        <label>精确产品型号<input id="product_query" autocomplete="off" placeholder="例如：HUAWEI MateBook X Pro 酷睿 Ultra 微绒典藏版"><button type="button" class="clear" data-clear="product_query">清空产品</button></label>
+        <label>发布平台<select id="platform"><option value="">尚未选择</option><option>门店朋友圈</option><option>小红书</option><option>公众号</option></select><button type="button" class="clear" data-clear="platform">清空平台</button></label>
+        <label>受众<input id="audience" placeholder="例如：有移动学习需求的大学生"><button type="button" class="clear" data-clear="audience">清空受众</button></label>
+        <label>推广目标<input id="goal" placeholder="例如：介绍一个证据完整的核心卖点"><button type="button" class="clear" data-clear="goal">清空目标</button></label>
+        <label>营销场景<input id="scene" placeholder="例如：开学季"><button type="button" class="clear" data-clear="scene">清空营销场景</button></label>
+        <label>时间背景 · 用户输入<input id="time" placeholder="例如：秋季开学季"><button type="button" class="clear" data-clear="scenario_inputs.time">清空时间</button></label>
+        <label>门店位置 · 用户手填<input id="store" placeholder="例如：校园周边门店"><button type="button" class="clear" data-clear="scenario_inputs.store">清空门店与地标</button></label>
+        <label>附近地标 · 用户手填<input id="landmarks" placeholder="多个地标用分号分隔"></label>
+        <label class="wide">实际使用场景<input id="usage" placeholder="例如：上课记笔记、图书馆整理资料"><button type="button" class="clear" data-clear="scenario_inputs.usage">清空使用场景</button></label>
+        <label class="wide">限制条件 · 每行一条<textarea id="constraints" rows="3" placeholder="不写价格、优惠、第一人称体验；只使用核查通过的事实。"></textarea><button type="button" class="clear" data-clear="constraints">清空限制条件</button></label>
+      </div></details>
+      <div id="cards" aria-live="polite"></div><div id="summary" class="summary"></div>
+      <div class="actions"><button id="understand" class="primary">理解推广想法</button><button id="continue" disabled>提交本轮补充 / 卡片选择</button></div>
+      <details><summary>服务端有效需求与来源</summary><pre id="task-snapshot">无任务</pre></details>
+    </section>
+    <section class="card"><div class="section-head"><h2>2 · 找到可用产品依据</h2><span id="facts-status" class="badge">待检索</span></div>
+      <p id="source" class="muted">尚未检索知识来源。不会使用前端演示目录作为事实。</p>
+      <div class="actions"><button id="research" disabled>只读检索当前产品</button><button id="check-facts" disabled>核查选中的候选事实</button></div>
+      <p class="muted">选择本次策略必需的少量候选事实；默认选前两条。retrieved 不是已核验事实。</p><div id="facts"></div><div id="fact-results"></div>
+    </section>
+    <section class="card"><div class="section-head"><h2>3 · 真实策略与人工确认</h2><span id="strategy-status" class="badge">待生成</span></div>
+      <div class="actions"><button id="generate-strategy" disabled>生成并核查策略</button><button id="confirm-strategy" disabled>我已阅读，确认当前策略</button><button id="handoff" disabled>取得当前已确认交接对象</button></div>
+      <div id="strategy"></div><div id="strategy-check"></div><details><summary>真实图文交接对象</summary><pre id="handoff-json">尚未取得</pre></details>
+    </section>
+    <section class="card"><div class="section-head"><h2>4 · B 图文工作台</h2><span id="content-status" class="badge">待生成</span></div>
+      <p class="muted">图片使用团队提供的预生成素材，不调用生图 API，不重复叠加文字。图片外观、内嵌文字及授权仍待确认；型号系列匹配不代表精确配置已核验。</p>
+      <label>文案生成方式<select id="copy-mode"><option value="llm">当前真实 LLM</option><option value="assembly">已有事实组装（程序生成，非模型）</option></select></label>
+      <div class="actions"><button id="generate-content" disabled>从已确认策略生成图文并最终核查</button><button id="resume-job" hidden>读取未完成的成果任务</button></div>
+      <p id="job-status" role="status"></p><div id="content-editor" hidden>
+        <label>标题<input id="copy-title"></label><label>正文<textarea id="copy-body" rows="7"></textarea></label><label>CTA<input id="copy-cta"></label><label>话题标签 · 分号分隔<input id="copy-tags"></label>
+        <p id="edit-warning" class="muted">修改后旧核查立即失效；重新核查不会覆盖手工文案。</p>
+        <div class="actions"><button id="save-check">保存修改并重新核查</button><button id="copy" disabled>复制已通过的文字</button><button id="download-text" disabled>下载可用文字</button><button id="download-package" disabled>下载审核包 · 图片待确认</button></div>
+        <div id="visuals" class="visuals"></div><div id="final-result"></div>
+      </div>
+      <section class="material-library" aria-labelledby="material-heading"><h3 id="material-heading">预生成素材 · 分平台管理</h3>
+        <div id="material-tabs" class="material-tabs" role="group" aria-label="素材平台"></div>
+        <p id="material-context" class="muted">先填写产品并提交需求，再读取同产品素材。</p>
+        <button id="load-materials">选择配图 / 更换配图</button>
+        <p id="material-status" role="status"></p><div id="material-library" class="material-grid"></div>
+        <p class="muted">各栏目分别保留选择与顺序。当前已确认策略的发布平台决定实际成稿平台；切换素材栏目不会偷偷修改策略或生成其他平台文案。更改发布平台请回到需求并重新确认策略。</p>
+      </section>
+    </section>
+    <details class="card"><summary>本次接口执行记录 · 不含密钥或完整请求</summary><ol id="events"></ol></details>
+  </div>
+</main><script src="demo-contracts.js"></script><script src="pregenerated.js"></script><script src="demo-flow.js"></script></body></html>

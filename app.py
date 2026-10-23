@@ -14,9 +14,11 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import sys
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from content_b.http import route as content_route
 
 ROOT = Path(__file__).resolve().parent
 UI_DIR = ROOT / "ui"
@@ -87,11 +89,25 @@ class Handler(SimpleHTTPRequestHandler):
             pass
 
     def do_GET(self):
+        task_path = self.path.split("?", 1)[0]
+        if re.fullmatch(r"/api/demo/tasks/task-[a-f0-9]{32}", task_path):
+            if dispatch_v2 is None:
+                return self._json(503, {"success": False, "data": None, "error": {"code": "BACKEND_NOT_READY", "message": "工作流尚未就绪。"}}, v2=True)
+            from src import workflow_service
+            try:
+                task = workflow_service.REPOSITORY.get(task_path.rsplit("/", 1)[1])
+                return self._json(200, {"success": True, "data": {"task": task}, "error": None}, v2=True)
+            except workflow_service.WorkflowError as error:
+                return self._json(error.http_status, {"success": False, "data": None, "error": {"code": error.code, "message": error.message}}, v2=True)
+        if content_route(self):
+            return
         if self.path.split("?")[0] == "/api/health":
             return self._json(200, {"backend": run_agent is not None, "detail": BACKEND_ERROR})
         return super().do_GET()
 
     def do_POST(self):
+        if content_route(self):
+            return
         path = self.path.split("?", 1)[0]
         is_v2 = path in V2_ROUTES
         if path != "/api/run" and not is_v2:
@@ -138,6 +154,14 @@ class Handler(SimpleHTTPRequestHandler):
         if not isinstance(result, dict):
             return self._json(502, error_result("BAD_RESULT", "后端返回结果格式不正确。"))
         return self._json(200, result)
+
+    def do_PATCH(self):
+        if not content_route(self):
+            self._json(404, error_result("NOT_FOUND", "接口不存在"))
+
+    def do_DELETE(self):
+        if not content_route(self):
+            self._json(404, error_result("NOT_FOUND", "接口不存在"))
 
     def log_message(self, fmt, *args):
         # 不记录请求路径、正文或后端异常，避免将用户资料或凭证写入日志。

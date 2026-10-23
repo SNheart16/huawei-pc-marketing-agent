@@ -1,0 +1,137 @@
+[
+  {
+    "id": "study",
+    "label": "正在准备新学期的同学",
+    "description": "B模块演示策略，不代表A已完成检索或事实核查",
+    "request": {
+      "task_id": "demo-study",
+      "strategy": {
+        "strategy_id": "demo-strategy-study",
+        "topic": "开学前，先列一张任务清单",
+        "audience": "正在准备新学期的同学",
+        "audience_need": "学习任务和常用软件是否适合自己的设备",
+        "core_message": "选电脑之前，先把这一学期真正要做的事情列出来。",
+        "content_angle": "从具体任务组织内容",
+        "content_format": "场景参考图文",
+        "content_outline": [
+          "写论文、整理资料，还是制作演示文稿？把使用频率最高的任务放在前面。",
+          "带上常用软件的名称和版本，逐一核对具体型号的适配资料。",
+          "现有设备够用就继续用；需要比较时，再根据自己的清单了解产品。"
+        ],
+        "cta": "",
+        "tone": "自然真诚",
+        "constraints": "不写未知参数、优惠或适配结论",
+        "avoid": [
+          "闭眼入",
+          "最强"
+        ],
+        "pending_confirmations": [
+          "素材授权与产品信息须最终核对"
+        ],
+        "risk_notes": [],
+        "assumptions": [
+          "受众需求由演示策略设定，未经调查验证"
+        ]
+      },
+      "product_context": {
+        "model": "HUAWEI MateBook Pro S",
+        "facts": []
+      },
+      "platform": "小红书",
+      "confirmed": true,
+      "copy_mode": "assembly",
+      "image_count": 2,
+      "art_direction": "editorial"
+    }
+  },
+  {
+    "id": "work",
+    "label": "需要移动办公的职场人",
+    "description": "B模块演示策略，不代表A已完成检索或事实核查",
+    "request": {
+      "task_id": "demo-work",
+      "strategy": {
+        "strategy_id": "demo-strategy-work",
+        "topic": "出差装备，从一次会议想起",
+        "audience": "需要移动办公的职场人",
+        "audience_need": "会议资料、演示连接与软件需求如何提前确认",
+        "core_message": "下一次出差前，把会议里需要完成的任务先过一遍。",
+        "content_angle": "从具体任务组织内容",
+        "content_format": "场景参考图文",
+        "content_outline": [
+          "整理要展示的文档和会议软件，先核对版本与使用条件。",
+          "演示连接、文件交换和充电安排，都值得写进自己的准备清单。",
+          "了解 HUAWEI MateBook Pro S 时，按任务查阅对应资料，不用未经证实的性能承诺替代判断。"
+        ],
+        "cta": "",
+        "tone": "自然真诚",
+        "constraints": "不写未知参数、优惠或适配结论",
+        "avoid": [
+          "闭眼入",
+          "最强"
+        ],
+        "pending_confirmations": [
+          "素材授权与产品信息须最终核对"
+        ],
+        "risk_notes": [],
+        "assumptions": [
+          "受众需求由演示策略设定，未经调查验证"
+        ]
+      },
+      "product_context": {
+        "model": "HUAWEI MateBook Pro S",
+        "facts": []
+      },
+      "platform": "小红书",
+      "confirmed": true,
+      "copy_mode": "assembly",
+      "image_count": 2,
+      "art_direction": "minimal"
+    }
+  },
+  {
+    "id": "create",
+    "label": "想建立个人创作习惯的人",
+    "description": "B模块演示策略，不代表A已完成检索或事实核查",
+    "request": {
+      "task_id": "demo-create",
+      "strategy": {
+        "strategy_id": "demo-strategy-create",
+        "topic": "把创作需求，写得更具体",
+        "audience": "想建立个人创作习惯的人",
+        "audience_need": "创作流程需要什么，而不是一味追求参数",
+        "core_message": "从一个准备完成的作品开始，梳理自己需要的电脑。",
+        "content_angle": "从具体任务组织内容",
+        "content_format": "场景参考图文",
+        "content_outline": [
+          "写稿、选片、排版：先画出自己的创作流程。",
+          "记录实际使用的软件、版本和文件格式，再确认具体型号是否适配。",
+          "为有用的工具留出位置，也为灵感留一点空白。"
+        ],
+        "cta": "",
+        "tone": "自然真诚",
+        "constraints": "不写未知参数、优惠或适配结论",
+        "avoid": [
+          "闭眼入",
+          "最强"
+        ],
+        "pending_confirmations": [
+          "素材授权与产品信息须最终核对"
+        ],
+        "risk_notes": [],
+        "assumptions": [
+          "受众需求由演示策略设定，未经调查验证"
+        ]
+      },
+      "product_context": {
+        "model": "HUAWEI MateBook Pro S",
+        "facts": []
+      },
+      "platform": "小红书",
+      "confirmed": true,
+      "copy_mode": "assembly",
+      "image_count": 2,
+      "art_direction": "warm"
+    }
+  }
+]

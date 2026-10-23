@@ -1,0 +1,418 @@
+{
+ "schema_version": "pregenerated/1.0",
+ "assets": [
+  {
+   "material_id": "pre-article-01",
+   "url": "/assets/pregenerated/wechat-article/article-01.png",
+   "product_model": "HUAWEI MateBook X Pro 酷睿 Ultra 微绒典藏版",
+   "platform": "公众号",
+   "theme": "创作灵感与视野",
+   "contains_text": true,
+   "source_type": "pre_generated",
+   "source_note": "团队本轮提供的预生成素材1；画面标注指定型号，原始生成工具与授权范围待确认；不是官方来源证明。",
+   "model_match_scope": "exact",
+   "rights_status": "unconfirmed",
+   "visual_check_status": "unknown",
+   "text_content": [
+    "HUAWEI MateBook X Pro 酷睿 Ultra 微绒典藏版 · 晴蓝",
+    "打开视野 看见创作新宇宙",
+    "让想象，拥有更广阔的表达",
+    "AI场景示意 · 产品以实物为准"
+   ]
+  },
+  {
+   "material_id": "pre-article-02",
+   "url": "/assets/pregenerated/wechat-article/article-02.png",
+   "product_model": "HUAWEI MateBook X Pro",
+   "platform": "公众号",
+   "theme": "星河创作灵感",
+   "contains_text": true,
+   "source_type": "pre_generated",
+   "source_note": "团队本轮提供的预生成素材2；画面仅标注X Pro系列，具体配置、外观与授权范围待确认。",
+   "model_match_scope": "family",
+   "rights_status": "unconfirmed",
+   "visual_check_status": "unknown",
+   "text_content": [
+    "让每一份灵感，有所抵达",
+    "从所见，到所想 HUAWEI MateBook X Pro，陪你展开创作",
+    "AI场景示意 · 产品以实物为准"
+   ]
+  },
+  {
+   "material_id": "pre-article-03",
+   "url": "/assets/pregenerated/wechat-article/article-03.png",
+   "product_model": "HUAWEI MateBook X Pro",
+   "platform": "公众号",
+   "theme": "创作灵感与想象",
+   "contains_text": true,
+   "source_type": "pre_generated",
+   "source_note": "团队本轮提供的预生成素材3；画面仅标注X Pro系列，具体配置、外观与授权范围待确认。",
+   "model_match_scope": "family",
+   "rights_status": "unconfirmed",
+   "visual_check_status": "unknown",
+   "text_content": [
+    "加速创想，释放创作可能",
+    "HUAWEI MateBook X Pro",
+    "从灵感萌生，到作品成形",
+    "创作，由此展开"
+   ]
+  },
+  {
+   "material_id": "pre-moments-01",
+   "url": "/assets/pregenerated/moments/moments-01.png",
+   "product_model": "HUAWEI MateBook X Pro",
+   "platform": "微信朋友圈",
+   "theme": "热爱与创作新宇宙",
+   "contains_text": true,
+   "source_type": "pre_generated",
+   "source_note": "团队本轮提供的预生成素材4；画面仅标注X Pro系列，具体配置、外观与授权范围待确认。",
+   "model_match_scope": "family",
+   "rights_status": "unconfirmed",
+   "visual_check_status": "unknown",
+   "text_content": [
+    "HUAWEI MateBook X Pro",
+    "打开，便是我的新宇宙",
+    "留一点时间，给自己的热爱",
+    "此刻，沉浸其中",
+    "AI场景示意 · 产品以实物为准"
+   ]
+  },
+  {
+   "material_id": "pre-moments-02",
+   "url": "/assets/pregenerated/moments/moments-02.png",
+   "product_model": "HUAWEI MateBook X Pro",
+   "platform": "微信朋友圈",
+   "theme": "晚间灵感与记录",
+   "contains_text": true,
+   "source_type": "pre_generated",
+   "source_note": "团队本轮提供的预生成素材5；画面仅标注X Pro系列，具体配置、外观与授权范围待确认。",
+   "model_match_scope": "family",
+   "rights_status": "unconfirmed",
+   "visual_check_status": "unknown",
+   "text_content": [
+    "今晚，和灵感同频",
+    "记录此刻所想 HUAWEI MateBook X Pro",
+    "把喜欢的世界，慢慢打开",
+    "AI场景示意 · 产品以实物为准"
+   ]
+  },
+  {
+   "material_id": "pre-moments-03",
+   "url": "/assets/pregenerated/moments/moments-03.png",
+   "product_model": "HUAWEI MateBook X Pro",
+   "platform": "微信朋友圈",
+   "theme": "热爱与自由创意",
+   "contains_text": true,
+   "source_type": "pre_generated",
+   "source_note": "团队本轮提供的预生成素材6；画面仅标注X Pro系列，具体配置、外观与授权范围待确认。",
+   "model_match_scope": "family",
+   "rights_status": "unconfirmed",
+   "visual_check_status": "unknown",
+   "text_content": [
+    "心之所向，即刻出发",
+    "HUAWEI MateBook X Pro",
+    "让创意，自由驰骋",
+    "专注热爱，全情投入",
+    "AI场景示意 · 产品以实物为准"
+   ]
+  },
+  {
+   "material_id": "pre-xhs-01",
+   "url": "/assets/pregenerated/xiaohongshu/xiaohongshu-01.jpg",
+   "product_model": "HUAWEI MateBook X Pro",
+   "platform": "小红书",
+   "theme": "打开创作灵感",
+   "contains_text": true,
+   "source_type": "pre_generated",
+   "source_note": "团队本轮提供的预生成素材7；画面仅标注X Pro系列，具体配置、外观与授权范围待确认。",
+   "model_match_scope": "family",
+   "rights_status": "unconfirmed",
+   "visual_check_status": "unknown",
+   "text_content": [
+    "HUAWEI MateBook X Pro",
+    "打开，即打开灵感新宇宙",
+    "从一束光，到一个新世界",
+    "让想象，自由展开",
+    "AI场景示意 · 产品以实物为准"
+   ]
+  },
+  {
+   "material_id": "pre-xhs-02",
+   "url": "/assets/pregenerated/xiaohongshu/xiaohongshu-02.jpg",
+   "product_model": "HUAWEI MateBook X Pro",
+   "platform": "小红书",
+   "theme": "把灵感装进星河",
+   "contains_text": true,
+   "source_type": "pre_generated",
+   "source_note": "团队本轮提供的预生成素材8；画面仅标注X Pro系列，具体配置、外观与授权范围待确认。",
+   "model_match_scope": "family",
+   "rights_status": "unconfirmed",
+   "visual_check_status": "unknown",
+   "text_content": [
+    "把灵感，装进星河",
+    "打开HUAWEI MateBook X Pro 让创意，沿着心之所向延伸",
+    "AI场景示意 · 产品以实物为准"
+   ]
+  },
+  {
+   "material_id": "pre-xhs-03",
+   "url": "/assets/pregenerated/xiaohongshu/xiaohongshu-03.jpg",
+   "product_model": "HUAWEI MateBook X Pro",
+   "platform": "小红书",
+   "theme": "灵感与创作主场",
+   "contains_text": true,
+   "source_type": "pre_generated",
+   "source_note": "团队本轮提供的预生成素材9；画面仅标注X Pro系列，具体配置、外观与授权范围待确认。",
+   "model_match_scope": "family",
+   "rights_status": "unconfirmed",
+   "visual_check_status": "unknown",
+   "text_content": [
+    "加速创想",
+    "HUAWEI MateBook X Pro 灵感全力释放",
+    "你的创作主场",
+    "AI场景示意 · 产品以实物为准"
+   ]
+  },
+  {
+   "material_id": "pre-xhs-04",
+   "url": "/assets/pregenerated/xiaohongshu/xiaohongshu-04-unconfirmed.jpg",
+   "product_model": "待确认",
+   "platform": "小红书",
+   "theme": "图书馆学习",
+   "contains_text": true,
+   "source_type": "pre_generated",
+   "source_note": "团队本轮提供的预生成素材10；无法确认型号，含70Wh、1.31kg及续航/护眼断言，尚无对应事实核查依据。不得推荐给X Pro或其他具体型号。",
+   "model_match_scope": "unconfirmed",
+   "rights_status": "unconfirmed",
+   "visual_check_status": "unknown",
+   "text_content": [
+    "泡图书馆一整天",
+    "护眼好屏 看久了也不累",
+    "70Wh大电池 从早八撑到晚自习",
+    "1.31kg 背着跑教室无压力",
+    "AI生成"
+   ]
+  },
+  {
+   "material_id": "pre-xhs-05",
+   "url": "/assets/pregenerated/xiaohongshu/xiaohongshu-05-unconfirmed.jpg",
+   "product_model": "待确认",
+   "platform": "小红书",
+   "theme": "开学手写笔记",
+   "contains_text": true,
+   "source_type": "pre_generated",
+   "source_note": "团队本轮提供的预生成素材11；无法确认型号，含手写笔适配及2.8K OLED断言，尚无对应事实核查依据。不得推荐给X Pro或其他具体型号。",
+   "model_match_scope": "unconfirmed",
+   "rights_status": "unconfirmed",
+   "visual_check_status": "unknown",
+   "text_content": [
+    "开学新装备 手写笔记更顺手",
+    "触控屏配手写笔 课件批注一笔搞定",
+    "2.8K OLED高清屏 看课件更清晰",
+    "AI生成"
+   ]
+  },
+  {
+   "material_id": "pre-xhs-06",
+   "url": "/assets/pregenerated/xiaohongshu/xiaohongshu-06-matebook14.jpg",
+   "product_model": "HUAWEI MateBook 14",
+   "platform": "小红书",
+   "theme": "门店体验",
+   "contains_text": true,
+   "source_type": "pre_generated",
+   "source_note": "团队本轮提供的预生成素材12；画面明确为MateBook14，不能用于X Pro任务；外观、图片参数及授权待核验。",
+   "model_match_scope": "family",
+   "rights_status": "unconfirmed",
+   "visual_check_status": "unknown",
+   "text_content": [
+    "线下门店 · 诚邀体验",
+    "到店体验 HUAWEI MateBook 14",
+    "原野绿 · 无界一体键盘 · OLED触控屏",
+    "AI生成"
+   ]
+  },
+  {
+   "material_id": "pre-moments-xpro-01",
+   "url": "/assets/pregenerated/moments-xpro/poster-01.jpg",
+   "product_model": "HUAWEI MateBook X Pro",
+   "model_match_scope": "family",
+   "platform": "微信朋友圈",
+   "theme": "开学季与移动办公推广",
+   "contains_text": true,
+   "source_type": "pre_generated",
+   "source_note": "团队本轮提供的朋友圈海报预生成素材；发布前需人工确认图文内容。"
+  },
+  {
+   "material_id": "pre-moments-xpro-02",
+   "url": "/assets/pregenerated/moments-xpro/poster-02.jpg",
+   "product_model": "HUAWEI MateBook X Pro",
+   "model_match_scope": "family",
+   "platform": "微信朋友圈",
+   "theme": "开学季与移动办公推广",
+   "contains_text": true,
+   "source_type": "pre_generated",
+   "source_note": "团队本轮提供的朋友圈海报预生成素材；发布前需人工确认图文内容。"
+  },
+  {
+   "material_id": "pre-moments-xpro-03",
+   "url": "/assets/pregenerated/moments-xpro/poster-03.jpg",
+   "product_model": "HUAWEI MateBook X Pro",
+   "model_match_scope": "family",
+   "platform": "微信朋友圈",
+   "theme": "开学季与移动办公推广",
+   "contains_text": true,
+   "source_type": "pre_generated",
+   "source_note": "团队本轮提供的朋友圈海报预生成素材；发布前需人工确认图文内容。"
+  },
+  {
+   "material_id": "pre-moments-xpro-04",
+   "url": "/assets/pregenerated/moments-xpro/poster-04.jpg",
+   "product_model": "HUAWEI MateBook X Pro",
+   "model_match_scope": "family",
+   "platform": "微信朋友圈",
+   "theme": "开学季与移动办公推广",
+   "contains_text": true,
+   "source_type": "pre_generated",
+   "source_note": "团队本轮提供的朋友圈海报预生成素材；发布前需人工确认图文内容。"
+  },
+  {
+   "material_id": "pre-moments-xpro-05",
+   "url": "/assets/pregenerated/moments-xpro/poster-05.jpg",
+   "product_model": "HUAWEI MateBook X Pro",
+   "model_match_scope": "family",
+   "platform": "微信朋友圈",
+   "theme": "开学季与移动办公推广",
+   "contains_text": true,
+   "source_type": "pre_generated",
+   "source_note": "团队本轮提供的朋友圈海报预生成素材；发布前需人工确认图文内容。"
+  },
+  {
+   "material_id": "pre-moments-xpro-06",
+   "url": "/assets/pregenerated/moments-xpro/poster-06.jpg",
+   "product_model": "HUAWEI MateBook X Pro",
+   "model_match_scope": "family",
+   "platform": "微信朋友圈",
+   "theme": "开学季与移动办公推广",
+   "contains_text": true,
+   "source_type": "pre_generated",
+   "source_note": "团队本轮提供的朋友圈海报预生成素材；发布前需人工确认图文内容。"
+  },
+  {
+   "material_id": "pre-xhs-xpro-01",
+   "url": "/assets/pregenerated/xhs-xpro/xhs-01.png",
+   "product_model": "HUAWEI MateBook X Pro",
+   "model_match_scope": "family",
+   "platform": "小红书",
+   "theme": "开学季与移动办公推广",
+   "contains_text": true,
+   "source_type": "pre_generated",
+   "source_note": "团队本轮提供的小红书预生成素材；发布前需人工确认图文内容。"
+  },
+  {
+   "material_id": "pre-xhs-xpro-02",
+   "url": "/assets/pregenerated/xhs-xpro/xhs-02.jpg",
+   "product_model": "HUAWEI MateBook X Pro",
+   "model_match_scope": "family",
+   "platform": "小红书",
+   "theme": "开学季与移动办公推广",
+   "contains_text": true,
+   "source_type": "pre_generated",
+   "source_note": "团队本轮提供的小红书预生成素材；发布前需人工确认图文内容。"
+  },
+  {
+   "material_id": "pre-xhs-xpro-03",
+   "url": "/assets/pregenerated/xhs-xpro/xhs-03.jpg",
+   "product_model": "HUAWEI MateBook X Pro",
+   "model_match_scope": "family",
+   "platform": "小红书",
+   "theme": "开学季与移动办公推广",
+   "contains_text": true,
+   "source_type": "pre_generated",
+   "source_note": "团队本轮提供的小红书预生成素材；发布前需人工确认图文内容。"
+  },
+  {
+   "material_id": "pre-article-xpro-01",
+   "url": "/assets/pregenerated/article-xpro/explain-01.png",
+   "product_model": "HUAWEI MateBook X Pro",
+   "model_match_scope": "family",
+   "platform": "公众号",
+   "theme": "产品说明多图",
+   "contains_text": true,
+   "source_type": "pre_generated",
+   "source_note": "团队本轮提供的多图产品说明素材；发布前需人工确认图文内容。"
+  },
+  {
+   "material_id": "pre-article-xpro-02",
+   "url": "/assets/pregenerated/article-xpro/explain-02.png",
+   "product_model": "HUAWEI MateBook X Pro",
+   "model_match_scope": "family",
+   "platform": "公众号",
+   "theme": "产品说明多图",
+   "contains_text": true,
+   "source_type": "pre_generated",
+   "source_note": "团队本轮提供的多图产品说明素材；发布前需人工确认图文内容。"
+  },
+  {
+   "material_id": "pre-article-xpro-03",
+   "url": "/assets/pregenerated/article-xpro/explain-03.png",
+   "product_model": "HUAWEI MateBook X Pro",
+   "model_match_scope": "family",
+   "platform": "公众号",
+   "theme": "产品说明多图",
+   "contains_text": true,
+   "source_type": "pre_generated",
+   "source_note": "团队本轮提供的多图产品说明素材；发布前需人工确认图文内容。"
+  },
+  {
+   "material_id": "pre-article-xpro-04",
+   "url": "/assets/pregenerated/article-xpro/explain-04.png",
+   "product_model": "HUAWEI MateBook X Pro",
+   "model_match_scope": "family",
+   "platform": "公众号",
+   "theme": "产品说明多图",
+   "contains_text": true,
+   "source_type": "pre_generated",
+   "source_note": "团队本轮提供的多图产品说明素材；发布前需人工确认图文内容。"
+  },
+  {
+   "material_id": "pre-article14-01",
+   "url": "/assets/pregenerated/article14/explain-01.png",
+   "product_model": "HUAWEI MateBook 14",
+   "platform": "公众号",
+   "theme": "产品说明多图",
+   "contains_text": true,
+   "source_type": "pre_generated",
+   "source_note": "团队本轮提供的多图产品说明素材；发布前需人工确认图文内容。（目录匹配名按演示目录简写登记）"
+  },
+  {
+   "material_id": "pre-article14-02",
+   "url": "/assets/pregenerated/article14/explain-02.png",
+   "product_model": "HUAWEI MateBook 14",
+   "platform": "公众号",
+   "theme": "产品说明多图",
+   "contains_text": true,
+   "source_type": "pre_generated",
+   "source_note": "团队本轮提供的多图产品说明素材；发布前需人工确认图文内容。（目录匹配名按演示目录简写登记）"
+  },
+  {
+   "material_id": "pre-article14-03",
+   "url": "/assets/pregenerated/article14/explain-03.png",
+   "product_model": "HUAWEI MateBook 14",
+   "platform": "公众号",
+   "theme": "产品说明多图",
+   "contains_text": true,
+   "source_type": "pre_generated",
+   "source_note": "团队本轮提供的多图产品说明素材；发布前需人工确认图文内容。（目录匹配名按演示目录简写登记）"
+  },
+  {
+   "material_id": "pre-article14-04",
+   "url": "/assets/pregenerated/article14/explain-04.png",
+   "product_model": "HUAWEI MateBook 14",
+   "platform": "公众号",
+   "theme": "产品说明多图",
+   "contains_text": true,
+   "source_type": "pre_generated",
+   "source_note": "团队本轮提供的多图产品说明素材；发布前需人工确认图文内容。（目录匹配名按演示目录简写登记）"
+  }
+ ]
+}

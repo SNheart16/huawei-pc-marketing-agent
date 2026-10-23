@@ -1,0 +1,22 @@
+[
+  {
+    "catalog_id": "pro-s-front",
+    "product_model": "HUAWEI MateBook Pro S",
+    "url": "/assets/content/matebook-pro-s-front.jpg",
+    "source_ref": "https://consumer.huawei.com/cn/harmonyos-computer/matebook-pro-s/",
+    "source_type": "official_asset",
+    "rights_status": "unconfirmed",
+    "purpose": "product",
+    "note": "用户已有官方页面下载素材；来源不等于商业授权。"
+  },
+  {
+    "catalog_id": "pro-s-angle",
+    "product_model": "HUAWEI MateBook Pro S",
+    "url": "/assets/content/matebook-pro-s-angle.jpg",
+    "source_ref": "https://consumer.huawei.com/cn/harmonyos-computer/matebook-pro-s/",
+    "source_type": "official_asset",
+    "rights_status": "unconfirmed",
+    "purpose": "product",
+    "note": "用户已有官方页面下载素材；来源不等于商业授权。"
+  }
+]

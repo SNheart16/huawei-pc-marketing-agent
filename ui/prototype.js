@@ -949,6 +949,7 @@
     const d = state.draft;
     if (!d.outputs[d.activePlatform]) d.activePlatform = Object.keys(d.outputs)[0];
     const o = d.outputs[d.activePlatform];
+    if (o?.asset_id && window.ContentB) return window.ContentB.render(o, d);
     const images = ensureOutputMedia(o, d.activePlatform);
     if (o.imageMode !== "multi") makeMultiImage(o, d.activePlatform);
     const activeImage = images.find(image => image.id === o.activeImageId) || images[0];
@@ -1009,7 +1010,7 @@
     return `${pageHead("门店设置", "只填写你了解的信息。本地推广机会会保留推断与待验证边界。")}<form id="store-form" class="mc-panel mc-settings"><h2>门店基础信息</h2><label class="mc-field"><span>门店位置或商圈</span><input name="location" value="${esc(s.location)}" placeholder="填写实际位置，例如：杭州市某商圈" maxlength="200"></label><label class="mc-field"><span>附近地标</span><input name="landmarks" value="${esc(s.landmarks)}" placeholder="例如：附近高校、写字楼或商业中心" maxlength="250"></label><label class="mc-field"><span>主要目标客群</span><input name="audience" value="${esc(s.audience)}" placeholder="由门店实际观察填写，可留空" maxlength="250"></label><fieldset><legend>常用推广平台</legend><div class="mc-choice-row">${platforms.map(p => `<label class="mc-checkbox"><input type="checkbox" name="platforms" value="${p}" ${s.platforms.includes(p) ? "checked" : ""}>${p}</label>`).join("")}</div></fieldset><p class="mc-muted">信息保存在当前浏览器，不会自动上传，也不会据此认定实际客群。地图选址的正式流程在「推广机会 · 周边场景」中完成（搜索门店 → 周边分布 → 围绕这里策划）。</p><div class="mc-settings-footer"><button class="mc-primary" type="submit">保存门店信息</button>${button("返回首页", "home", "mc-secondary")}</div></form>`;
   }
   function historyPage() {
-    return `${pageHead("创作记录", "保存在当前浏览器的草稿，可继续编辑或导出。", button("开始新创作", "new", "mc-primary"))}${state.history.length ? `<section class="mc-panel mc-history-list"><h2>${state.history.length} 份本地草稿</h2>${state.history.map(r => `<article class="mc-history-row"><div><span class="mc-tag">${esc(D.tasks.find(t => t.id === r.draft.task)?.name)}</span><h3>${esc(Object.values(r.draft.outputs)[0]?.title || "未命名草稿")}</h3><p>${esc(D.products.find(p => p.id === r.draft.product)?.name || "暂不指定型号")} · ${esc(r.draft.platforms.join(" / "))}</p><small>${esc(new Date(r.updatedAt).toLocaleString("zh-CN"))} · 模拟成果</small></div><div class="mc-history-actions">${button("继续编辑", "open-record", "mc-secondary", `data-id="${esc(r.id)}"`)}${button("删除", "delete-record", "mc-link mc-history-delete", `data-id="${esc(r.id)}" aria-label="删除记录：${esc(Object.values(r.draft.outputs)[0]?.title || "未命名草稿")}"`)}</div></article>`).join("")}</section>` : `<div class="mc-empty"><h2>还没有创作草稿</h2><p>完成一次推广创作后，成果会自动保存在这里。</p>${button("开始第一次创作", "home", "mc-primary")}</div>`}`;
+    return `${pageHead("创作记录", "保存在当前浏览器的草稿，可继续编辑或导出。", button("开始新创作", "new", "mc-primary"))}${state.history.length ? `<section class="mc-panel mc-history-list"><h2>${state.history.length} 份本地草稿</h2>${state.history.map(r => `<article class="mc-history-row"><div><span class="mc-tag">${esc(D.tasks.find(t => t.id === r.draft.task)?.name)}</span><h3>${esc(Object.values(r.draft.outputs)[0]?.title || "未命名草稿")}</h3><p>${esc(D.products.find(p => p.id === r.draft.product)?.name || "暂不指定型号")} · ${esc(r.draft.platforms.join(" / "))}</p><small>${esc(new Date(r.updatedAt).toLocaleString("zh-CN"))} · ${Object.values(r.draft.outputs).some(o => o.asset_id) ? "B 图文草稿" : "模拟成果"}</small></div><div class="mc-history-actions">${button("继续编辑", "open-record", "mc-secondary", `data-id="${esc(r.id)}"`)}${button("删除", "delete-record", "mc-link mc-history-delete", `data-id="${esc(r.id)}" aria-label="删除记录：${esc(Object.values(r.draft.outputs)[0]?.title || "未命名草稿")}"`)}</div></article>`).join("")}</section>` : `<div class="mc-empty"><h2>还没有创作草稿</h2><p>完成一次推广创作后，成果会自动保存在这里。</p>${button("开始第一次创作", "home", "mc-primary")}</div>`}`;
   }
   function initResultSlider() {
     const viewport = typeof document !== "undefined" && document.querySelector ? document.querySelector(".mc-result-thumbnails") : null;
@@ -1083,6 +1084,8 @@
   }
   function render() {
     const home = state.page === "home";
+    const modeLabel = document.querySelector(".mc-demo");
+    if (modeLabel) modeLabel.textContent = state.page === "results" && currentOutput()?.asset_id ? "B 成果服务 · A 引导仍为原型" : "V1 交互原型 · 模拟数据";
     $("#mc-create-page").hidden = !home;
     $("#mc-work-page").hidden = home;
     $("#mc-page-label").textContent = ({ home: "推广创作", guide: "AI 引导工作台", config: "推广创作", analysis: "推广创作", results: "推广创作", settings: "门店设置", history: "创作记录", opportunities: "推广机会" })[state.page];
@@ -1137,17 +1140,22 @@
     selectStrategy(selectedStrategy());
     generating = true;
     const el = $('[data-action="generate"]');
-    if (el) { el.disabled = true; el.textContent = "正在整理模拟成果…"; }
+    if (el) { el.disabled = true; el.textContent = window.ContentB ? "正在生成推广成果…" : "正在整理模拟成果…"; }
     $("#mc-work-page").setAttribute("aria-busy", "true");
     const generationDraft = state.draft, snapshot = JSON.stringify(state.draft);
     try {
+      if (window.ContentB) {
+        state.draft.outputContext = JSON.parse(JSON.stringify(state.draft.strategyContext));
+        await window.ContentB.generate(state.draft, state.draft.strategyContext, product()?.name || "");
+        return;
+      }
       await new Promise(resolve => setTimeout(resolve, 550));
       if (generationDraft !== state.draft || JSON.stringify(state.draft) !== snapshot) { render(); toast("配置已变更，请按当前方向重新生成。"); return; }
       state.draft.outputs = createOutputs(); state.draft.outputContext = JSON.parse(JSON.stringify(state.draft.strategyContext)); state.draft.activePlatform = Object.keys(state.draft.outputs)[0]; state.draft.revision++;
       record();
       if (state.page === "analysis") navigate("results");
       else toast("模拟草稿已保存到创作记录。");
-    } catch { render(); toast("模拟生成未完成，请重试；已有草稿仍保留在创作记录中。"); }
+    } catch (error) { render(); toast(window.ContentB ? error.message : "模拟生成未完成，请重试；已有草稿仍保留在创作记录中。"); }
     finally { generating = false; $("#mc-work-page").removeAttribute("aria-busy"); }
   }
   function currentOutput() { return state.draft.outputs[state.draft.activePlatform]; }
@@ -1268,6 +1276,7 @@
     }
     const el = e.target.closest("[data-action]"); if (!el || el.disabled) return;
     const a = el.dataset.action, id = el.dataset.id, d = state.draft;
+    if (window.ContentB && await window.ContentB.action(a, id)) return;
     if (routes.includes(a)) {
       if (a === "opportunities") { state.opportunityExplorer.activeView = ""; state.opportunityExplorer.selectedOpportunity = ""; }
       return navigate(a);
@@ -1764,7 +1773,18 @@
     const now = new Date(), midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
     setTimeout(() => { refreshRecommendations(); scheduleDayRefresh(); }, midnight - now + 50);
   }
+  window.ContentB?.bind({ getDraft: () => state.draft, render, record, toast, navigate,
+    newContentTask(request) {
+      record(); state.draft = fresh(); state.guide = null; state.page = "home";
+      const d = state.draft; d.taskId = request.task_id; d.platforms = [request.platform]; d.activePlatform = request.platform;
+      d.strategyId = request.strategy.strategy_id;
+      d.strategyContext = {taskId:d.taskId,strategyId:d.strategyId,strategy:{...request.strategy,id:d.strategyId,name:request.strategy.topic,contentTheme:request.strategy.topic,platforms:[request.platform]},task:{}};
+      d.outputContext = JSON.parse(JSON.stringify(d.strategyContext));
+      return d;
+    }
+  });
   scheduleDayRefresh();
   navigate(routes.includes(location.hash.slice(1)) ? location.hash.slice(1) : state.page, false);
+  window.ContentB?.boot();
   if (storageWarning) toast("本地状态未能恢复；当前操作仍可继续，重要成果请导出。");
 })();

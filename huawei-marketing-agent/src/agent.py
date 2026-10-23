@@ -61,7 +61,8 @@ def _safe_url(value):
         return None
     try:
         parsed = urlsplit(value)
-        if parsed.scheme != "https" or not parsed.hostname or parsed.username or parsed.password or parsed.query or parsed.fragment:
+        loopback_http = parsed.scheme == "http" and parsed.hostname in {"127.0.0.1", "localhost", "::1"}
+        if (parsed.scheme != "https" and not loopback_http) or not parsed.hostname or parsed.username or parsed.password or parsed.query or parsed.fragment:
             return None
         return value
     except ValueError:
@@ -228,7 +229,11 @@ def _probe_image(url):
     try:
         host = urlsplit(url).hostname
         addresses = socket.getaddrinfo(host, 443, type=socket.SOCK_STREAM)
-        if not addresses or any(not ipaddress.ip_address(addr[4][0]).is_global for addr in addresses):
+        ips = [ipaddress.ip_address(addr[4][0]) for addr in addresses] if addresses else []
+        # Publicly addressable hosts pass; loopback passes for local 演示环境
+        # (paired with _safe_url's loopback http allowance). Private LAN
+        # addresses remain blocked.
+        if not ips or (not any(ip.is_global for ip in ips) and not all(ip.is_loopback for ip in ips)):
             return False
         request = Request(url, headers={"Accept": "image/*", "Range": "bytes=0-511"})
         with build_opener(_NoImageRedirect()).open(request, timeout=5) as response:
@@ -443,7 +448,7 @@ def run_agent(input_data: dict) -> dict:
         result["checks"]["missing_information"] = missing
         return _stop(result, "needs_input", "必填输入不完整。", "请补充：" + "、".join(missing))
     task = {key: value.strip() if isinstance(value, str) else value for key, value in task.items()}
-    task["platform"] = {"微信公众号": "公众号"}.get(task["platform"], task["platform"])
+    task["platform"] = {"微信公众号": "公众号", "朋友圈": "门店朋友圈", "微信朋友圈": "门店朋友圈"}.get(task["platform"], task["platform"])
     result["scenario"]["platform"] = task["platform"]
     if task["platform"] not in _RULES:
         return _stop(result, "needs_input", "发布平台不受支持。", "请选择公众号、小红书、门店朋友圈或门店海报。")

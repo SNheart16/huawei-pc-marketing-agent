@@ -340,6 +340,25 @@ class LocalKbClient:
                     parsed = urlsplit(reference.strip("<>"))
                 except ValueError:
                     continue
+                # Absolute http(s) image references in KB markdown are externally
+                # served assets: expose them as media entries carrying the URL so
+                # downstream readability checks can probe them. Confirmation still
+                # requires the asset name to identify the exact model.
+                if parsed.scheme in {"http", "https"} and parsed.netloc:
+                    raw_url = reference.strip("<>")
+                    decoded_path = unquote(parsed.path)
+                    asset_name = Path(decoded_path).name or raw_url
+                    confirmed = self._contains(query, decoded_path)
+                    media = {
+                        "name": asset_name, "url": raw_url, "source": path.relative_to(root).as_posix(),
+                        "source_ref": decoded_path.lstrip("/") or asset_name, "product_model": query if confirmed else None,
+                        "status": "confirmed" if confirmed else "unknown",
+                        "match_basis": "absolute_url_reference" if confirmed else None,
+                    }
+                    if not any(existing.get("source_ref") == raw_url for existing in result["media"]):
+                        result["media"].append(media)
+                        result["image_counts"][media["status"]] += 1
+                    continue
                 if parsed.scheme or parsed.netloc:
                     continue
                 decoded = unquote(parsed.path)
